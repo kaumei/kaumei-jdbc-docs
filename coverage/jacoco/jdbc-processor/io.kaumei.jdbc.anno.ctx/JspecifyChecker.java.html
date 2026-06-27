@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JspecifyChecker.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.ctx</a> &gt; <span class="el_source">JspecifyChecker.java</span></div><h1>JspecifyChecker.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.ctx;
+
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
+
+class JspecifyChecker implements BiFunction&lt;Element, TypeMirror, OptionalFlag&gt; {
+
+    private final Predicate&lt;TypeMirror&gt; nonNull;
+    private final Predicate&lt;TypeMirror&gt; nullMarked;
+    private final Predicate&lt;TypeMirror&gt; nullUnmarked;
+    private final Predicate&lt;TypeMirror&gt; nullable;
+
+<span class="fc" id="L21">    JspecifyChecker(Context ctx) {</span>
+<span class="fc" id="L22">        this.nonNull = predicate(ctx, &quot;org.jspecify.annotations.NonNull&quot;);</span>
+<span class="fc" id="L23">        this.nullMarked = predicate(ctx, &quot;org.jspecify.annotations.NullMarked&quot;);</span>
+<span class="fc" id="L24">        this.nullUnmarked = predicate(ctx, &quot;org.jspecify.annotations.NullUnmarked&quot;);</span>
+<span class="fc" id="L25">        this.nullable = predicate(ctx, &quot;org.jspecify.annotations.Nullable&quot;);</span>
+<span class="fc" id="L26">    }</span>
+
+    private static Predicate&lt;TypeMirror&gt; predicate(Context ctx, String fcq) {
+<span class="fc" id="L29">        var element = ctx.elements.getTypeElement(fcq);</span>
+<span class="pc bpc" id="L30" title="1 of 2 branches missed.">        if (element != null) {</span>
+<span class="fc" id="L31">            return (given) -&gt; ctx.isSameType(element.asType(), given);</span>
+        }
+<span class="nc" id="L33">        return (given) -&gt; false;</span>
+    }
+
+
+    /**
+     * Primitives → NON_NULL
+     * - Optional&lt;T&gt; → OPTIONAL_TYPE
+     * - @Nullable on element → OPTIONAL
+     * - @NonNull on element → NON_NULL
+     * - In @NullMarked scope → unannotated types are NON_NULL
+     * - In @NullUnmarked scope → unannotated types are UNSPECIFIED
+     * - No markers found → UNSPECIFIED
+     */
+    @Override
+    public OptionalFlag apply(Element context, TypeMirror type) {
+<span class="fc" id="L48">        boolean nullable = false;</span>
+<span class="fc" id="L49">        boolean nonnull = false;</span>
+
+        // Check for @Nullable or @NonNull annotation on the element (e.g., method, parameter, field)
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        for (var annotation : type.getAnnotationMirrors()) {</span>
+<span class="fc" id="L53">            var annoType = annotation.getAnnotationType();</span>
+<span class="pc bpc" id="L54" title="1 of 4 branches missed.">            if (!nullable &amp;&amp; this.nullable.test(annoType)) {</span>
+<span class="fc" id="L55">                nullable = true;</span>
+<span class="pc bpc" id="L56" title="2 of 4 branches missed.">            } else if (!nonnull &amp;&amp; this.nonNull.test(annoType)) {</span>
+<span class="fc" id="L57">                nonnull = true;</span>
+            }
+<span class="fc" id="L59">        }</span>
+
+<span class="fc" id="L61">        Element current = context;</span>
+<span class="fc bfc" id="L62" title="All 6 branches covered.">        while (current != null &amp;&amp; !nullable &amp;&amp; !nonnull) {</span>
+            // Check for @Nullable or @NonNull annotation on the enclosing elements (bottom up)
+            // stop if we found nullable or nonnull
+<span class="fc bfc" id="L65" title="All 2 branches covered.">            for (var annotation : current.getAnnotationMirrors()) {</span>
+<span class="fc" id="L66">                var annoType = annotation.getAnnotationType();</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">                if (this.nullMarked.test(annoType)) {</span>
+<span class="fc" id="L68">                    nonnull = true;</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">                } else if (this.nullUnmarked.test(annoType)) {</span>
+<span class="fc" id="L70">                    return OptionalFlag.UNSPECIFIED;</span>
+                }
+<span class="fc" id="L72">            }</span>
+<span class="fc" id="L73">            current = current.getEnclosingElement();</span>
+        }
+
+<span class="pc bpc" id="L76" title="1 of 4 branches missed.">        if (nonnull &amp;&amp; !nullable) {</span>
+<span class="fc" id="L77">            return OptionalFlag.NON_NULL;</span>
+<span class="pc bpc" id="L78" title="1 of 4 branches missed.">        } else if (!nonnull &amp;&amp; nullable) {</span>
+<span class="fc" id="L79">            return OptionalFlag.NULLABLE;</span>
+        }
+<span class="fc" id="L81">        return OptionalFlag.UNSPECIFIED;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

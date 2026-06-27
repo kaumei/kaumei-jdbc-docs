@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SourceMethodParameter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.model</a> &gt; <span class="el_source">SourceMethodParameter.java</span></div><h1>SourceMethodParameter.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.model;
+
+import io.kaumei.jdbc.anno.ctx.ConfigService;
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.utils.SqlDV;
+import io.kaumei.jdbc.anno.utils.SqlTokenizer;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
+import static java.util.Objects.requireNonNull;
+
+public class SourceMethodParameter {
+
+    static SourceMethodParameter of(Context ctx, Msg.Builder messages, ExecutableElement method) {
+<span class="fc" id="L27">        return of0(ctx, messages, method, null);</span>
+    }
+
+    static SourceMethodParameter of(Context ctx, Msg.Builder messages, ExecutableElement method, SqlDV sql) {
+<span class="fc" id="L31">        return of0(ctx, messages, method, sql);</span>
+    }
+
+    private static SourceMethodParameter of0(Context ctx, Msg.Builder messages, ExecutableElement method, @Nullable SqlDV sql) {
+<span class="fc" id="L35">        var name2param = name2param(ctx, method);</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        if (sql != null) {</span>
+<span class="fc" id="L37">            var tokens = SqlTokenizer.parse(sql);</span>
+<span class="fc" id="L38">            var hasCollections = new ParameterContext(ctx, new Java2JdbcResolver(ctx),</span>
+                    messages, name2param, tokens)
+<span class="fc" id="L40">                    .processAndUpdate();</span>
+<span class="fc" id="L41">            return new SourceMethodParameter(name2param, hasCollections, tokens, sql);</span>
+        }
+<span class="fc" id="L43">        return new SourceMethodParameter(name2param, null, null, null);</span>
+    }
+
+    private static Map&lt;String, Param&gt; name2param(Context ctx, ExecutableElement method) {
+<span class="fc" id="L47">        var name2param = new HashMap&lt;String, Param&gt;();</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        for (var paramElem : method.getParameters()) {</span>
+<span class="fc" id="L49">            var name = paramElem.getSimpleName().toString();</span>
+<span class="fc" id="L50">            var map = AnnoMap.of(ctx, paramElem);</span>
+<span class="fc" id="L51">            map.consume(ctx.JDBC_CONVERTER_NAME); // special case: this anno is consuming in the converter</span>
+<span class="fc" id="L52">            var param = new ParamUnknown(map, paramElem);</span>
+<span class="fc" id="L53">            name2param.put(name, param);</span>
+<span class="fc" id="L54">        }</span>
+<span class="fc" id="L55">        return name2param;</span>
+    }
+
+<span class="fc" id="L58">    private record ParameterContext(Context ctx,</span>
+                                    Java2JdbcResolver resolver,
+                                    Msg.Builder messages,
+                                    Map&lt;String, Param&gt; name2param,
+                                    List&lt;SqlTokenizer.Token&gt; tokens) {
+        boolean processAndUpdate() {
+<span class="fc" id="L64">            var hasCollections = new AtomicBoolean(false);</span>
+<span class="fc" id="L65">            int plCount = 0;</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">            for (var token : tokens) {</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">                if (token instanceof SqlTokenizer.UnnamedParameter ignore) {</span>
+<span class="fc" id="L68">                    messages.add(JdbcMsg.sqlPlaceholderUnnamedUnsupported());</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">                } else if (token instanceof SqlTokenizer.Parameter tokenParam) {</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">                    if (!tokenParam.path().isEmpty()) {</span>
+<span class="fc" id="L71">                        messages.add(JdbcMsg.sqlPlaceholderPathUnsupported(tokenParam.name()));</span>
+<span class="fc" id="L72">                        continue;</span>
+                    }
+<span class="fc" id="L74">                    var name = tokenParam.root();</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">                    if (!name2param.containsKey(name)) {</span>
+<span class="fc" id="L76">                        messages.add(JdbcMsg.sqlPlaceholderNotFound(name));</span>
+<span class="fc" id="L77">                        continue;</span>
+                    }
+<span class="fc" id="L79">                    var param0 = name2param.get(name);</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">                    if (param0 instanceof ParamUnknown param) {</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">                        if (token instanceof SqlTokenizer.SingleParameter) {</span>
+<span class="fc" id="L82">                            singleParameter(name, param);</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">                        } else if (token instanceof SqlTokenizer.AllValues) {</span>
+<span class="fc" id="L84">                            valuesParameter(name, param, hasCollections);</span>
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">                        } else if (token instanceof SqlTokenizer.AllNames) {</span>
+<span class="fc" id="L86">                            namesParameter(name, param);</span>
+                        }
+<span class="fc bfc" id="L88" title="All 4 branches covered.">                    } else if (param0 instanceof ParamSingle &amp;&amp; token instanceof SqlTokenizer.SingleParameter) {</span>
+                        // ok
+<span class="pc bpc" id="L90" title="1 of 6 branches missed.">                    } else if (param0 instanceof ParamValues &amp;&amp;</span>
+                            (token instanceof SqlTokenizer.AllValues || token instanceof SqlTokenizer.AllNames)) {
+                        // ok
+                    } else {
+<span class="fc" id="L94">                        var pName = shapeName(param0);</span>
+<span class="fc" id="L95">                        var tName = shapeName(token);</span>
+<span class="fc" id="L96">                        messages.add(JdbcMsg.sqlPlaceholderUsedWithDifferentShapes(name, pName, tName));</span>
+<span class="fc" id="L97">                        continue;</span>
+                    }
+
+                    // update plCount
+<span class="fc" id="L101">                    var resolved = name2param.get(name);</span>
+<span class="fc bfc" id="L102" title="All 6 branches covered.">                    if (resolved instanceof ParamSingle || resolved instanceof ParamArray || resolved instanceof ParamList) {</span>
+<span class="fc" id="L103">                        plCount++;</span>
+<span class="fc bfc" id="L104" title="All 4 branches covered.">                    } else if (resolved instanceof ParamComposite pc &amp;&amp; token instanceof SqlTokenizer.AllValues) {</span>
+<span class="fc" id="L105">                        plCount += pc.names.length;</span>
+                    }
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">                    if (plCount &gt; ctx.kaumeiConfig.maxTotalPlaceholders()) {</span>
+<span class="nc" id="L108">                        messages.add(JdbcMsg.sqlPlaceholderCountExceedsLimit(plCount, ctx.kaumeiConfig.maxTotalPlaceholders()));</span>
+                    }
+                }
+<span class="fc" id="L111">            } // for</span>
+<span class="fc" id="L112">            return hasCollections.get();</span>
+        }
+
+        String shapeName(SqlTokenizer.Token token) {
+<span class="fc bfc" id="L116" title="All 2 branches covered.">            if (token instanceof SqlTokenizer.SingleParameter) {</span>
+<span class="fc" id="L117">                return &quot;single&quot;;</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">            } else if (token instanceof SqlTokenizer.AllValues) {</span>
+<span class="fc" id="L119">                return &quot;values&quot;;</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">            } else if (token instanceof SqlTokenizer.AllNames) {</span>
+<span class="fc" id="L121">                return &quot;names&quot;;</span>
+            } else {
+<span class="nc" id="L123">                return &quot;unknown&quot;;</span>
+            }
+        }
+
+        String shapeName(Param token) {
+<span class="fc bfc" id="L128" title="All 2 branches covered.">            if (token instanceof ParamSingle) {</span>
+<span class="fc" id="L129">                return &quot;single&quot;;</span>
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">            } else if (token instanceof ParamValues) {</span>
+<span class="fc" id="L131">                return &quot;values&quot;;</span>
+            } else {
+<span class="nc" id="L133">                return &quot;unknown&quot;;</span>
+            }
+        }
+
+        void singleParameter(String name, ParamUnknown param) {
+<span class="fc" id="L138">            var result = resolver.single(param.element);</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">            if (result.hasMessages()) {</span>
+<span class="fc" id="L140">                messages.add(JdbcMsg.invalidParam(param.element(), result.messages()));</span>
+            } else {
+<span class="fc" id="L142">                var value = result.value();</span>
+<span class="fc" id="L143">                name2param.put(name, param.asSingle(value.searchRequest(), value.optional()));</span>
+            }
+<span class="fc" id="L145">        }</span>
+
+        void valuesParameter(String name, ParamUnknown param, AtomicBoolean hasCollections) {
+<span class="fc" id="L148">            var converterName = ctx.JDBC_CONVERTER_NAME.getAnnoOpt(param.element);</span>
+<span class="pc bpc" id="L149" title="1 of 4 branches missed.">            if (converterName != null &amp;&amp; converterName.isBlankName()) {</span>
+<span class="nc" id="L150">                messages.add(JdbcMsg.invalidParam(param.element(),</span>
+<span class="nc" id="L151">                        JdbcMsg.annotationValueMustNotBeBlank(&quot;@JdbcConverterName&quot;)));</span>
+<span class="nc" id="L152">                return;</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">            } else if (converterName != null) {</span>
+<span class="fc" id="L154">                messages.add(JdbcMsg.javaMethodParameterJdbcConverterNameUnsupportedForSqlPlaceholder(</span>
+                        name, &quot;:&quot; + name + &quot;.{values}&quot;, &quot;values&quot;));
+<span class="fc" id="L156">                return;</span>
+            }
+<span class="fc" id="L158">            var result = resolver.values(param.element);</span>
+<span class="fc bfc" id="L159" title="All 2 branches covered.">            if (result.hasMessages()) {</span>
+<span class="fc" id="L160">                messages.add(JdbcMsg.invalidParam(param.element(), result.messages()));</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">            } else if (result.value().kind() == Java2JdbcResolver.Kind.ARRAY) {</span>
+<span class="fc" id="L162">                var value = result.value();</span>
+<span class="fc" id="L163">                name2param.put(name, param.asArray(value.searchRequest(), value.optional(), value.cmpOptional()));</span>
+<span class="fc" id="L164">                hasCollections.set(true);</span>
+<span class="fc bfc" id="L165" title="All 2 branches covered.">            } else if (result.value().kind() == Java2JdbcResolver.Kind.LIST) {</span>
+<span class="fc" id="L166">                var value = result.value();</span>
+<span class="fc" id="L167">                name2param.put(name, param.asList(value.searchRequest(), value.optional(), value.cmpOptional()));</span>
+<span class="fc" id="L168">                hasCollections.set(true);</span>
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">            } else if (result.value().kind() == Java2JdbcResolver.Kind.RECORD) {</span>
+<span class="fc" id="L170">                valuesOfRecord(name, param);</span>
+            } else {
+<span class="nc" id="L172">                throw new RuntimeException(&quot;!!!&quot;);</span>
+            }
+<span class="fc" id="L174">        }</span>
+
+        void valuesOfRecord(String name, ParamUnknown param) {
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">            if (!(param.element.asType() instanceof DeclaredType declared)</span>
+<span class="pc bpc" id="L178" title="1 of 2 branches missed.">                    || !(declared.asElement() instanceof TypeElement recordElement)</span>
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">                    || recordElement.getKind() != ElementKind.RECORD) {</span>
+<span class="nc" id="L180">                throw new RuntimeException(&quot;unreachable&quot;);</span>
+            }
+<span class="fc" id="L182">            var recordComponents = recordElement.getRecordComponents();</span>
+<span class="fc" id="L183">            var names = new String[recordComponents.size()];</span>
+<span class="fc" id="L184">            var searchRequests = new SearchKey[recordComponents.size()];</span>
+<span class="fc" id="L185">            var vars = new RecordComponentElement[recordComponents.size()];</span>
+<span class="fc" id="L186">            var optionals = new OptionalFlag[recordComponents.size()];</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">            for (int i = 0; i &lt; recordComponents.size(); i++) {</span>
+<span class="fc" id="L188">                var cmp = recordComponents.get(i);</span>
+<span class="fc" id="L189">                var jdbcName = ctx.JDBC_NAME.getAnnoOpt(cmp);</span>
+<span class="fc bfc" id="L190" title="All 4 branches covered.">                if (jdbcName != null &amp;&amp; jdbcName.hasMessages()) {</span>
+<span class="fc" id="L191">                    messages.add(JdbcMsg.invalidParam(param.element(), jdbcName.messages()));</span>
+<span class="fc" id="L192">                    return;</span>
+                }
+<span class="fc" id="L194">                var converterName = ctx.JDBC_CONVERTER_NAME.getAnnoOpt(cmp);</span>
+<span class="pc bpc" id="L195" title="1 of 4 branches missed.">                if (converterName != null &amp;&amp; converterName.isBlankName()) {</span>
+<span class="fc" id="L196">                    messages.add(JdbcMsg.invalidParam(param.element(),</span>
+<span class="fc" id="L197">                            JdbcMsg.annotationValueMustNotBeBlank(&quot;@JdbcConverterName&quot;)));</span>
+<span class="fc" id="L198">                    return;</span>
+                }
+<span class="fc" id="L200">                vars[i] = cmp;</span>
+<span class="fc" id="L201">                names[i] = cmp.getSimpleName().toString();</span>
+<span class="fc" id="L202">                searchRequests[i] = SearchKey.of(ctx, cmp);</span>
+<span class="fc" id="L203">                optionals[i] = ctx.optionalFlag(cmp);</span>
+            }
+<span class="fc" id="L205">            name2param.put(name, param.asComposite(names, searchRequests, vars, optionals));</span>
+<span class="fc" id="L206">        }</span>
+
+        void namesParameter(String name, ParamUnknown param) {
+<span class="fc" id="L209">            var converterName = ctx.JDBC_CONVERTER_NAME.getAnnoOpt(param.element);</span>
+<span class="pc bpc" id="L210" title="1 of 4 branches missed.">            if (converterName != null &amp;&amp; converterName.isBlankName()) {</span>
+<span class="nc" id="L211">                messages.add(JdbcMsg.invalidParam(param.element(),</span>
+<span class="nc" id="L212">                        JdbcMsg.annotationValueMustNotBeBlank(&quot;@JdbcConverterName&quot;)));</span>
+<span class="nc" id="L213">                return;</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">            } else if (converterName != null) {</span>
+<span class="fc" id="L215">                messages.add(JdbcMsg.javaMethodParameterJdbcConverterNameUnsupportedForSqlPlaceholder(</span>
+                        name, &quot;:&quot; + name + &quot;.{names}&quot;, &quot;names&quot;));
+<span class="fc" id="L217">                return;</span>
+            }
+<span class="fc" id="L219">            var result = resolver.values(param.element);</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">            if (result.hasMessages()) {</span>
+<span class="fc" id="L221">                messages.add(JdbcMsg.invalidParam(param.element(), result.messages()));</span>
+<span class="fc bfc" id="L222" title="All 2 branches covered.">            } else if (result.value().kind() == Java2JdbcResolver.Kind.RECORD) {</span>
+<span class="fc" id="L223">                valuesOfRecord(name, param);</span>
+            } else {
+<span class="fc" id="L225">                messages.add(JdbcMsg.invalidParam(param.element(), JdbcMsg.JAVA_TO_JDBC_RESOLVER_NAMES_UNSUPPORTED_TYPES));</span>
+            }
+<span class="fc" id="L227">        }</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final Map&lt;String, Param&gt; name2param;
+    private final @Nullable Boolean hasCollectionsOpt;
+    private final @Nullable List&lt;SqlTokenizer.Token&gt; tokensOpt;
+    private final @Nullable SqlDV sqlOpt;
+
+    private SourceMethodParameter(Map&lt;String, Param&gt; name2param,
+                                  @Nullable Boolean hasCollectionsOpt,
+                                  @Nullable List&lt;SqlTokenizer.Token&gt; tokensOpt,
+<span class="fc" id="L240">                                  @Nullable SqlDV sqlOpt) {</span>
+<span class="fc" id="L241">        this.name2param = name2param;</span>
+<span class="fc" id="L242">        this.hasCollectionsOpt = hasCollectionsOpt;</span>
+<span class="fc" id="L243">        this.tokensOpt = tokensOpt;</span>
+<span class="fc" id="L244">        this.sqlOpt = sqlOpt;</span>
+<span class="fc" id="L245">    }</span>
+
+    public boolean hasCollections() {
+<span class="fc" id="L248">        return requireNonNull(hasCollectionsOpt);</span>
+    }
+
+    public List&lt;SqlTokenizer.Token&gt; tokens() {
+<span class="fc" id="L252">        return requireNonNull(tokensOpt);</span>
+    }
+
+    public SqlDV sql() {
+<span class="fc" id="L256">        return requireNonNull(sqlOpt);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public void addUnusedAnno(Msg.Builder messages) {
+<span class="fc bfc" id="L262" title="All 2 branches covered.">        for (var entry : name2param.entrySet()) {</span>
+<span class="fc" id="L263">            var paramAnno = entry.getValue().annoMap();</span>
+<span class="fc bfc" id="L264" title="All 2 branches covered.">            if (paramAnno.hasUnused()) {</span>
+<span class="fc" id="L265">                var name = entry.getKey();</span>
+<span class="fc" id="L266">                messages.add(JdbcMsg.javaMethodParameterHasUnusedAnnotations(name, paramAnno.unused()));</span>
+            }
+<span class="fc" id="L268">        }</span>
+<span class="fc" id="L269">    }</span>
+
+    @Nullable
+    public &lt;T&gt; String paramNameFor(ConfigService.Option&lt;T&gt; option) {
+<span class="fc bfc" id="L273" title="All 2 branches covered.">        for (var entry : name2param.entrySet()) {</span>
+<span class="fc bfc" id="L274" title="All 2 branches covered.">            if (entry.getValue().annoMap().getIfDefault(option) != null) {</span>
+<span class="fc" id="L275">                return entry.getKey();</span>
+            }
+<span class="fc" id="L277">        }</span>
+<span class="fc" id="L278">        return null;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    // for test purpose only
+    Set&lt;String&gt; parameterNames() {
+<span class="fc" id="L285">        return name2param.keySet();</span>
+    }
+
+    public void forEach(Consumer&lt;Param&gt; consumer) {
+<span class="fc bfc" id="L289" title="All 2 branches covered.">        for (var param : this.name2param.values()) {</span>
+<span class="fc" id="L290">            consumer.accept(param);</span>
+<span class="fc" id="L291">        }</span>
+<span class="fc" id="L292">    }</span>
+
+    public void forEachSearchRequest(Consumer&lt;SearchKey&gt; consumer) {
+<span class="fc bfc" id="L295" title="All 2 branches covered.">        for (var p : this.name2param.values()) {</span>
+<span class="fc bfc" id="L296" title="All 2 branches covered.">            for (var sr : p.allSearchRequests()) {</span>
+<span class="fc" id="L297">                consumer.accept(sr);</span>
+<span class="fc" id="L298">            }</span>
+<span class="fc" id="L299">        }</span>
+<span class="fc" id="L300">    }</span>
+
+    public Param get(String name) {
+<span class="fc" id="L303">        return requireNonNull(name2param.get(name));</span>
+    }
+
+    public ParamSingle getSingle(String name) {
+<span class="fc" id="L307">        var param = name2param.get(name);</span>
+<span class="pc bpc" id="L308" title="1 of 2 branches missed.">        if (param instanceof SourceMethodParameter.ParamSingle ps) {</span>
+<span class="fc" id="L309">            return ps;</span>
+        }
+<span class="nc" id="L311">        throw new RuntimeException(&quot;Parameter '&quot; + name + &quot;' is not a composite: &quot; + param);</span>
+    }
+
+    public ParamValues getValues(String name) {
+<span class="fc" id="L315">        var param = name2param.get(name);</span>
+<span class="pc bpc" id="L316" title="1 of 2 branches missed.">        if (param instanceof SourceMethodParameter.ParamValues pv) {</span>
+<span class="fc" id="L317">            return pv;</span>
+        }
+<span class="nc" id="L319">        throw new RuntimeException(&quot;Parameter '&quot; + name + &quot;' is not a composite: &quot; + param);</span>
+    }
+
+    // ---------------------------------------------------------------------------
+
+    public sealed interface Param permits ParamSingle, ParamUnknown, ParamValues {
+        AnnoMap annoMap();
+
+        VariableElement element();
+
+        default Set&lt;SearchKey&gt; allSearchRequests() {
+<span class="fc" id="L330">            return Collections.emptySet();</span>
+        }
+    }
+
+<span class="fc" id="L334">    public record ParamUnknown(AnnoMap annoMap, VariableElement element) implements Param {</span>
+        ParamArray asArray(SearchKey searchRequest, OptionalFlag optional, OptionalFlag cmpOptional) {
+<span class="fc" id="L336">            return new ParamArray(annoMap, element, searchRequest, optional, cmpOptional);</span>
+        }
+
+        ParamList asList(SearchKey searchRequest, OptionalFlag optional, OptionalFlag cmpOptional) {
+<span class="fc" id="L340">            return new ParamList(annoMap, element, searchRequest, optional, cmpOptional);</span>
+        }
+
+        ParamSingle asSingle(SearchKey searchRequest, OptionalFlag optional) {
+<span class="fc" id="L344">            return new ParamSingle(annoMap, element, searchRequest, optional);</span>
+        }
+
+        ParamComposite asComposite(String[] names, SearchKey[] searchRequests, RecordComponentElement[] variable, OptionalFlag[] optionals) {
+<span class="fc" id="L348">            return new ParamComposite(annoMap, element, names, searchRequests, variable, optionals);</span>
+        }
+    }
+
+<span class="fc" id="L352">    public record ParamSingle(AnnoMap annoMap, VariableElement element,</span>
+                              SearchKey searchRequest,
+                              OptionalFlag optional) implements Param {
+        @Override
+        public Set&lt;SearchKey&gt; allSearchRequests() {
+<span class="fc" id="L357">            return Set.of(searchRequest);</span>
+        }
+
+    }
+
+    public sealed interface ParamValues extends Param permits ParamArray, ParamList, ParamComposite {
+    }
+
+<span class="fc" id="L365">    public record ParamArray(AnnoMap annoMap, VariableElement element, SearchKey searchRequest,</span>
+                             OptionalFlag optional,
+                             OptionalFlag cmpOptional) implements ParamValues {
+        @Override
+        public Set&lt;SearchKey&gt; allSearchRequests() {
+<span class="fc" id="L370">            return Set.of(searchRequest);</span>
+        }
+    }
+
+<span class="fc" id="L374">    public record ParamList(AnnoMap annoMap, VariableElement element,</span>
+                            SearchKey searchRequest,
+                            OptionalFlag optional,
+                            OptionalFlag cmpOptional) implements ParamValues {
+        @Override
+        public Set&lt;SearchKey&gt; allSearchRequests() {
+<span class="fc" id="L380">            return Set.of(searchRequest);</span>
+        }
+    }
+
+<span class="fc" id="L384">    public record ParamComposite(AnnoMap annoMap, VariableElement element, String[] names,</span>
+                                 SearchKey[] searchRequests,
+                                 RecordComponentElement[] variable,
+                                 OptionalFlag[] optionals) implements ParamValues {
+        @Override
+        public Set&lt;SearchKey&gt; allSearchRequests() {
+<span class="fc" id="L390">            return Set.of(searchRequests);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

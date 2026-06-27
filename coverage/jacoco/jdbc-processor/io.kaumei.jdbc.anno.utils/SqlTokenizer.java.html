@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SqlTokenizer.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.utils</a> &gt; <span class="el_source">SqlTokenizer.java</span></div><h1>SqlTokenizer.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.utils;
+
+import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.Objects.requireNonNull;
+
+/// Examples:
+/// ```
+/// :user.addresses[0].city
+/// :user.addresses[0].*
+/// :user.addresses[0].{values}
+/// :user.addresses[0].{names}
+/// ```
+public class SqlTokenizer {
+
+    // @formatter:off
+    public sealed interface Token permits TextToken, UnnamedParameter, Parameter { }
+    // A simple text part of the SQL.
+<span class="fc" id="L26">    public record TextToken(String sql) implements Token { }</span>
+    // A simple ? of the SQL
+<span class="fc" id="L28">    public record UnnamedParameter() implements Token { }</span>
+
+    // path to the object to use
+    public sealed interface PathSegment permits Property, Index { }
+<span class="fc" id="L32">    public record Property(String name) implements PathSegment { }</span>
+<span class="fc" id="L33">    public record Index(int index) implements PathSegment { }</span>
+
+    public sealed interface Parameter extends Token permits SingleParameter, AllValues, AllNames {
+        String root();
+        List&lt;PathSegment&gt; path();
+        String name();
+    }
+
+<span class="fc" id="L41">    public record SingleParameter(String root, List&lt;PathSegment&gt; path) implements Parameter {</span>
+        public String name() {
+<span class="fc" id="L43">            return SqlTokenizer.name(root,path).toString();</span>
+        }
+        @Override
+        public String toString() {
+<span class="fc" id="L47">            return name();</span>
+        }
+    }
+<span class="fc" id="L50">    public record AllValues(String root, List&lt;PathSegment&gt; path) implements Parameter {</span>
+        public String name() {
+<span class="fc" id="L52">            return SqlTokenizer.name(root,path).append(&quot;.{values}&quot;).toString();</span>
+        }
+        @Override
+        public String toString() {
+<span class="fc" id="L56">            return name();</span>
+        }
+    }
+<span class="fc" id="L59">    public record AllNames(String root, List&lt;PathSegment&gt; path) implements Parameter {</span>
+        public String name() {
+<span class="fc" id="L61">            return SqlTokenizer.name(root,path).append(&quot;.{names}&quot;).toString();</span>
+        }
+        @Override
+        public String toString() {
+<span class="fc" id="L65">            return name();</span>
+        }
+    }
+    // @formatter:on
+
+    private static StringBuilder name(String root, List&lt;PathSegment&gt; path) {
+<span class="fc" id="L71">        var sb = new StringBuilder(root);</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        for (var p : path) {</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">            if (p instanceof Index index) {</span>
+<span class="fc" id="L74">                sb.append(&quot;[&quot;).append(index.index).append(&quot;]&quot;);</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">            } else if (p instanceof Property property) {</span>
+<span class="fc" id="L76">                sb.append(&quot;.&quot;).append(property.name);</span>
+            }
+<span class="fc" id="L78">        }</span>
+<span class="fc" id="L79">        return sb;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static List&lt;Token&gt; parse(SqlDV str) {
+<span class="fc" id="L85">        return new SqlTokenizer(str.value()).parse();</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final String str;
+    private final int strLength;
+
+<span class="fc" id="L93">    private char lastChar = 0;</span>
+<span class="fc" id="L94">    private int currentIndex = -1;</span>
+<span class="fc" id="L95">    private char currentChar = 0;</span>
+    private char lookahead;
+
+<span class="fc" id="L98">    SqlTokenizer(String str) {</span>
+<span class="fc" id="L99">        this.str = requireNonNull(str);</span>
+<span class="fc" id="L100">        this.strLength = str.length();</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        this.lookahead = this.strLength &gt; 0 ? this.str.charAt(0) : 0;</span>
+<span class="fc" id="L102">    }</span>
+
+    private boolean isLast() {
+<span class="fc bfc" id="L105" title="All 2 branches covered.">        return this.lookahead == 0;</span>
+    }
+
+    /// package visibility for testing only
+    int currentIndex() {
+<span class="fc" id="L110">        return currentIndex;</span>
+    }
+
+    /// switch to the next char. return false if the string is at the end
+    /// package visibility for testing only
+    boolean next() {
+<span class="fc" id="L116">        this.currentIndex++;</span>
+<span class="fc" id="L117">        this.lastChar = this.currentChar;</span>
+<span class="fc" id="L118">        this.currentChar = this.lookahead;</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        this.lookahead = this.currentIndex + 1 &lt; this.strLength ? this.str.charAt(this.currentIndex + 1) : 0;</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        return this.currentIndex &lt; this.strLength;</span>
+    }
+
+    List&lt;Token&gt; parse() {
+<span class="fc" id="L124">        var list = new ArrayList&lt;Token&gt;();</span>
+
+<span class="fc" id="L126">        int lastIndex = 0;</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        while (next()) {</span>
+
+<span class="fc bfc" id="L129" title="All 2 branches covered.">            if (currentChar == '?') {</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">                if (lastIndex &lt; currentIndex) {</span>
+<span class="fc" id="L131">                    list.add(new TextToken(str.substring(lastIndex, currentIndex)));</span>
+                }
+<span class="fc" id="L133">                list.add(new UnnamedParameter());</span>
+<span class="fc" id="L134">                lastIndex = currentIndex + 1;</span>
+
+<span class="fc bfc" id="L136" title="All 4 branches covered.">            } else if (currentChar == '\'' &amp;&amp; lastChar != '\\') {</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">                while (next()) {</span>
+<span class="fc bfc" id="L138" title="All 4 branches covered.">                    if (currentChar == '\'' &amp;&amp; lastChar != '\\') {</span>
+<span class="fc" id="L139">                        break;</span>
+                    }
+                }
+
+<span class="fc bfc" id="L143" title="All 4 branches covered.">            } else if (currentChar == '\&quot;' &amp;&amp; lastChar != '\\') {</span>
+<span class="fc bfc" id="L144" title="All 2 branches covered.">                while (next()) {</span>
+<span class="fc bfc" id="L145" title="All 4 branches covered.">                    if (currentChar == '\&quot;' &amp;&amp; lastChar != '\\') {</span>
+<span class="fc" id="L146">                        break;</span>
+                    }
+                }
+
+<span class="fc bfc" id="L150" title="All 2 branches covered.">            } else if (currentChar == ':') {</span>
+<span class="fc" id="L151">                int colonIndex = currentIndex;</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">                if (next()) {</span>
+<span class="fc" id="L153">                    var param = afterColon();</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">                    if (param != null) {</span>
+<span class="fc bfc" id="L155" title="All 2 branches covered.">                        if (lastIndex &lt; colonIndex) {</span>
+<span class="fc" id="L156">                            list.add(new TextToken(str.substring(lastIndex, colonIndex)));</span>
+                        }
+<span class="fc" id="L158">                        list.add(param);</span>
+<span class="fc" id="L159">                        lastIndex = currentIndex + 1;</span>
+                    }
+                }
+
+<span class="fc" id="L163">            }</span>
+        }
+
+<span class="fc bfc" id="L166" title="All 2 branches covered.">        if (lastIndex &lt; currentIndex) {</span>
+<span class="fc" id="L167">            list.add(new TextToken(str.substring(lastIndex)));</span>
+        }
+
+<span class="fc" id="L170">        return list;</span>
+    }
+
+    /// ```java
+    /// parameterRef ::= ':' identifier path? terminal?
+    /// path         ::= (index | segment)+
+    /// index        :: = '[' digit+ ']'
+    /// segment      ::= '.' identifier
+    /// terminal     ::= '.*' | '.{' meta '}'
+    /// meta         ::= 'names' | 'values'
+    /// identifier   ::= JavaIdentifierStart JavaIdentifierPart*
+    /// integer      ::= digit+
+    /// ```
+    /// package visibility for testing only
+    @Nullable Token afterColon() {
+<span class="fc bfc" id="L185" title="All 2 branches covered.">        if (!Character.isJavaIdentifierStart(lookahead)) {</span>
+<span class="fc" id="L186">            return null;</span>
+        }
+<span class="fc" id="L188">        var root = parseIdentifier();</span>
+
+<span class="fc" id="L190">        List&lt;PathSegment&gt; path = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L191" title="1 of 6 branches missed.">        while ((lookahead == '[' || lookahead == '.') &amp;&amp; next()) {</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">            if (currentChar == '[') {</span>
+<span class="pc bpc" id="L193" title="1 of 4 branches missed.">                if (Character.isDigit(lookahead) &amp;&amp; next()) {</span>
+<span class="fc" id="L194">                    var digit = parseDigit();</span>
+<span class="pc bpc" id="L195" title="1 of 4 branches missed.">                    if (!next() || currentChar != ']') {</span>
+<span class="fc" id="L196">                        return null;</span>
+                    }
+<span class="fc" id="L198">                    path.add(new Index(digit));</span>
+<span class="fc" id="L199">                } else {</span>
+<span class="fc" id="L200">                    return null;</span>
+                }
+
+<span class="pc bpc" id="L203" title="1 of 2 branches missed.">            } else if (currentChar == '.') {</span>
+<span class="pc bpc" id="L204" title="1 of 4 branches missed.">                if (Character.isJavaIdentifierStart(lookahead) &amp;&amp; next()) {</span>
+<span class="fc" id="L205">                    var segment = parseIdentifier();</span>
+<span class="fc" id="L206">                    path.add(new Property(segment));</span>
+
+<span class="pc bpc" id="L208" title="1 of 4 branches missed.">                } else if (lookahead == '*' &amp;&amp; next()) {</span>
+<span class="fc" id="L209">                    return new AllValues(root, path);</span>
+
+<span class="pc bpc" id="L211" title="1 of 4 branches missed.">                } else if (lookahead == '{' &amp;&amp; next()) {</span>
+<span class="fc bfc" id="L212" title="All 8 branches covered.">                    if (lookahead == 'n' &amp;&amp; tokens('n', 'a', 'm', 'e', 's') &amp;&amp; next() &amp;&amp; currentChar == '}') {</span>
+<span class="fc" id="L213">                        return new AllNames(root, path);</span>
+<span class="fc bfc" id="L214" title="All 8 branches covered.">                    } else if (lookahead == 'v' &amp;&amp; tokens('v', 'a', 'l', 'u', 'e', 's') &amp;&amp; next() &amp;&amp; currentChar == '}') {</span>
+<span class="fc" id="L215">                        return new AllValues(root, path);</span>
+                    } else {
+<span class="fc" id="L217">                        return null;</span>
+                    }
+
+                } else {
+<span class="fc" id="L221">                    return null;</span>
+                }
+            } else {
+                break;
+            }
+        } // for
+<span class="fc" id="L227">        return new SingleParameter(root, path);</span>
+    }
+
+    private boolean tokens(char... c) {
+<span class="fc bfc" id="L231" title="All 2 branches covered.">        for (char value : c) {</span>
+<span class="pc bpc" id="L232" title="1 of 4 branches missed.">            if (lookahead != value || !next()) {</span>
+<span class="fc" id="L233">                return false;</span>
+            }
+        }
+<span class="fc" id="L236">        return true;</span>
+    }
+
+    /// package visibility for testing only
+    String parseIdentifier() {
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        if (Character.isJavaIdentifierStart(currentChar)) {</span>
+<span class="fc" id="L242">            var startIndex = currentIndex;</span>
+<span class="fc bfc" id="L243" title="All 4 branches covered.">            while (Character.isJavaIdentifierPart(lookahead) &amp;&amp; !isLast()) {</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">                if (!next()) { // sanity-check</span>
+<span class="nc" id="L245">                    throw new IllegalStateException(); // sanity-check</span>
+                }
+            }
+<span class="fc" id="L248">            return this.str.substring(startIndex, currentIndex + 1);</span>
+        }
+<span class="fc" id="L250">        throw new IllegalStateException();</span>
+    }
+
+    /// package visibility for testing only
+    Integer parseDigit() {
+<span class="fc bfc" id="L255" title="All 2 branches covered.">        if (Character.isDigit(currentChar)) {</span>
+<span class="fc" id="L256">            var startIndex = currentIndex;</span>
+<span class="fc bfc" id="L257" title="All 2 branches covered.">            while (Character.isDigit(lookahead)) {</span>
+<span class="pc bpc" id="L258" title="1 of 2 branches missed.">                if (!next()) { // sanity-check</span>
+<span class="nc" id="L259">                    throw new IllegalStateException(); // sanity-check</span>
+                }
+            }
+<span class="fc" id="L262">            return Integer.parseInt(this.str, startIndex, currentIndex + 1, 10);</span>
+        }
+<span class="fc" id="L264">        throw new IllegalStateException();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

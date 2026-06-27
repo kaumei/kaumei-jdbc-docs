@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SearchKey.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.store</a> &gt; <span class="el_source">SearchKey.java</span></div><h1>SearchKey.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.store;
+
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.model.ConverterNameDV;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.RecordComponentElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
+
+import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.component;
+
+public class SearchKey implements Comparable&lt;SearchKey&gt; {
+
+    public static SearchKey of(Context ctx, RecordComponentElement element) {
+<span class="fc" id="L21">        var name = ctx.JDBC_CONVERTER_NAME.getAnno(element, ConverterNameDV.unnamed());</span>
+<span class="fc" id="L22">        return new SearchKey(element.asType(), name);</span>
+    }
+
+    public static SearchKey of(Context ctx, VariableElement element) {
+<span class="fc" id="L26">        var name = ctx.JDBC_CONVERTER_NAME.getAnno(element, ConverterNameDV.unnamed());</span>
+<span class="fc" id="L27">        return new SearchKey(element.asType(), name);</span>
+    }
+
+    public static SearchKey jdbcToJava(Context ctx, ExecutableElement element) {
+<span class="fc" id="L31">        var name = ctx.JDBC_TO_JAVA.getAnno(element, ConverterNameDV.unnamed());</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        return ctx.optionalFlag(element, element.getReturnType()).isOptionalType()</span>
+<span class="fc" id="L33">                ? new SearchKey(component(element.getReturnType()), name)</span>
+<span class="fc" id="L34">                : new SearchKey(element.getReturnType(), name);</span>
+    }
+
+    public static SearchKey of(TypeMirror type) {
+<span class="fc" id="L38">        return new SearchKey(type, ConverterNameDV.unnamed());</span>
+    }
+
+    public static SearchKey of(TypeMirror type, ConverterNameDV name) {
+<span class="fc" id="L42">        return new SearchKey(type, name);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final StoreID storeId;
+    private final ConverterNameDV name;
+    private final TypeMirror type;
+
+<span class="fc" id="L51">    private SearchKey(TypeMirror type, ConverterNameDV name) {</span>
+<span class="fc" id="L52">        this.type = type;</span>
+<span class="fc" id="L53">        this.name = name;</span>
+<span class="fc" id="L54">        this.storeId = StoreID.of(type, name);</span>
+<span class="fc" id="L55">    }</span>
+
+    public StoreID toStoreId() {
+<span class="fc" id="L58">        return this.storeId;</span>
+    }
+
+    public TypeMirror type() {
+<span class="fc" id="L62">        return this.type;</span>
+    }
+
+    public boolean hasName() {
+<span class="fc" id="L66">        return this.name.hasName();</span>
+    }
+
+    public ConverterNameDV name() {
+<span class="fc" id="L70">        return this.name;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public int compareTo(SearchKey o) {
+<span class="fc" id="L77">        return this.storeId.compareTo(o.storeId);</span>
+    }
+
+    @Override
+    public boolean equals(@Nullable Object o) {
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (this == o) {</span>
+<span class="fc" id="L83">            return true;</span>
+<span class="fc bfc" id="L84" title="All 4 branches covered.">        } else if (o == null || getClass() != o.getClass()) {</span>
+<span class="fc" id="L85">            return false;</span>
+        }
+<span class="fc" id="L87">        return this.storeId.equals(((SearchKey) o).storeId);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L92">        return this.storeId.hashCode();</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L97">        return &quot;{type=&quot; + type + &quot;, name=&quot; + name + '}';</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

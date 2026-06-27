@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JavaMessenger.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.ctx</a> &gt; <span class="el_source">JavaMessenger.java</span></div><h1>JavaMessenger.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.ctx;
+
+import io.kaumei.jdbc.anno.ProcessorException;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.annotation.config.JdbcLogLevel;
+import org.jspecify.annotations.Nullable;
+
+import javax.annotation.processing.Messager;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.*;
+import javax.tools.Diagnostic;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import static io.kaumei.jdbc.anno.Processor.OPTION_KEY_LOG_LEVEL;
+import static java.util.Objects.requireNonNull;
+
+public class JavaMessenger {
+
+    // ----- service
+    private final Context ctx;
+    private final Messager messager;
+
+    // ----- state
+<span class="fc" id="L32">    private JdbcLogLevel.LogLevel logState = JdbcLogLevel.LogLevel.ERROR;</span>
+
+<span class="fc" id="L34">    public JavaMessenger(Context ctx, ProcessingEnvironment env) {</span>
+<span class="fc" id="L35">        this.ctx = requireNonNull(ctx);</span>
+<span class="fc" id="L36">        this.messager = requireNonNull(env.getMessager());</span>
+<span class="fc" id="L37">        this.logState = getLogLevel(env.getOptions());</span>
+<span class="fc" id="L38">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    void updateLogState(JdbcLogLevel.LogLevel level) {
+<span class="fc" id="L43">        this.logState = level;</span>
+<span class="fc" id="L44">    }</span>
+
+    public boolean isDebugEnabled() {
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        return this.logState == JdbcLogLevel.LogLevel.DEBUG;</span>
+    }
+
+    public &lt;T extends Element&gt; void acceptWithDebugFlag(T elem, Consumer&lt;T&gt; consumer) {
+<span class="fc" id="L51">        var oldLoggerState = enableDebug(elem);</span>
+        try {
+<span class="fc" id="L53">            consumer.accept(elem);</span>
+        } finally {
+<span class="fc" id="L55">            this.logState = oldLoggerState;</span>
+        }
+<span class="fc" id="L57">    }</span>
+
+    public &lt;T extends Element, R&gt; R applyWithDebugFlag(T elem, Function&lt;T, R&gt; func) {
+<span class="nc" id="L60">        var oldLoggerState = enableDebug(elem);</span>
+        try {
+<span class="nc" id="L62">            return func.apply(elem);</span>
+        } finally {
+<span class="nc" id="L64">            this.logState = oldLoggerState;</span>
+        }
+    }
+
+    private JdbcLogLevel.LogLevel enableDebug(Element context) {
+<span class="fc" id="L69">        var element = context;</span>
+<span class="pc bpc" id="L70" title="1 of 4 branches missed.">        while (element != null &amp;&amp; element.getKind() != ElementKind.PACKAGE) {</span>
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">            if (this.ctx.JDBC_DEBUG.hasAnno(element)) {</span>
+<span class="nc" id="L72">                var old = logState;</span>
+<span class="nc" id="L73">                logState = JdbcLogLevel.LogLevel.DEBUG;</span>
+<span class="nc" id="L74">                return old;</span>
+            }
+<span class="fc" id="L76">            element = element.getEnclosingElement();</span>
+        }
+<span class="fc" id="L78">        return logState;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public void always(CharSequence msg, Object... args) {
+<span class="fc" id="L84">        this.messager.printMessage(Diagnostic.Kind.NOTE, format(msg, args));</span>
+<span class="fc" id="L85">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * @param msg the message
+     * @param args key value pairs
+     */
+    public void error(CharSequence msg, Object... args) {
+<span class="fc" id="L94">        this.messager.printMessage(Diagnostic.Kind.ERROR, format(msg, args));</span>
+<span class="fc" id="L95">    }</span>
+
+    public void error(@Nullable Element e, CharSequence msg, Object... args) {
+<span class="fc" id="L98">        this.messager.printMessage(Diagnostic.Kind.ERROR, format(msg, args), e);</span>
+<span class="fc" id="L99">    }</span>
+
+    public void error(Exception exp) {
+<span class="fc" id="L102">        var expStr = formatException(exp);</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        if (exp instanceof ProcessorException pe) {</span>
+<span class="fc" id="L104">            this.messager.printMessage(Diagnostic.Kind.ERROR, expStr, pe.element());</span>
+        } else {
+<span class="fc" id="L106">            this.messager.printMessage(Diagnostic.Kind.ERROR, expStr);</span>
+        }
+<span class="fc" id="L108">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public void warn(CharSequence msg, Object... args) {
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (JdbcLogLevel.LogLevel.WARN.isEnabled(logState)) {</span>
+<span class="fc" id="L114">            this.messager.printMessage(Diagnostic.Kind.WARNING, format(msg, args));</span>
+        }
+<span class="fc" id="L116">    }</span>
+
+    public void warn(@Nullable Element e, CharSequence msg, Object... args) {
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        if (JdbcLogLevel.LogLevel.WARN.isEnabled(logState)) {</span>
+<span class="fc" id="L120">            this.messager.printMessage(Diagnostic.Kind.WARNING, format(msg, args), e);</span>
+        }
+<span class="fc" id="L122">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public void info(CharSequence msg, Object... args) {
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (JdbcLogLevel.LogLevel.INFO.isEnabled(logState)) {</span>
+<span class="fc" id="L128">            this.messager.printMessage(Diagnostic.Kind.NOTE, format(msg, args));</span>
+        }
+<span class="fc" id="L130">    }</span>
+
+    public void info(@Nullable Element e, CharSequence msg, Object... args) {
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        if (JdbcLogLevel.LogLevel.INFO.isEnabled(logState)) {</span>
+<span class="fc" id="L134">            this.messager.printMessage(Diagnostic.Kind.NOTE, format(msg, args), e);</span>
+        }
+<span class="fc" id="L136">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public void debug(CharSequence msg, Object... args) {
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        if (JdbcLogLevel.LogLevel.DEBUG.isEnabled(logState)) {</span>
+<span class="fc" id="L142">            this.messager.printMessage(Diagnostic.Kind.NOTE, format(msg, args));</span>
+        }
+<span class="fc" id="L144">    }</span>
+
+    public void debug(@Nullable Element e, CharSequence msg, Object... args) {
+<span class="fc bfc" id="L147" title="All 2 branches covered.">        if (JdbcLogLevel.LogLevel.DEBUG.isEnabled(logState)) {</span>
+<span class="fc" id="L148">            this.messager.printMessage(Diagnostic.Kind.NOTE, format(msg, args), e);</span>
+        }
+<span class="fc" id="L150">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public CharSequence format(CharSequence msg, @Nullable Object... args) {
+<span class="fc bfc" id="L155" title="All 2 branches covered.">        if (args.length == 0) {</span>
+<span class="fc" id="L156">            return msg;</span>
+        }
+<span class="fc" id="L158">        var kv = new StringBuilder(msg);</span>
+<span class="fc" id="L159">        kv.append(' ');</span>
+
+<span class="fc" id="L161">        var sep = false;</span>
+<span class="fc" id="L162">        int i = 0;</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">        while (i + 1 &lt; args.length) {</span>
+<span class="fc" id="L164">            addKeyValue(kv, sep, args[i], args[i + 1]);</span>
+<span class="fc" id="L165">            i += 2;</span>
+<span class="fc" id="L166">            sep = true;</span>
+        }
+
+<span class="fc bfc" id="L169" title="All 2 branches covered.">        if (i &lt; args.length) {</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">            if (args[i] instanceof Exception e) {</span>
+<span class="fc" id="L171">                kv.append(&quot;: &quot;);</span>
+<span class="fc" id="L172">                kv.append(e);</span>
+<span class="fc" id="L173">                addStackTrace(kv, e.getStackTrace());</span>
+<span class="fc bfc" id="L174" title="All 2 branches covered.">            } else if (args[i] != null) {</span>
+<span class="fc" id="L175">                addKeyValue(kv, sep, null, args[i]);</span>
+            }
+        }
+<span class="fc" id="L178">        return kv;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public JdbcLogLevel.LogLevel getLogLevel(Map&lt;String, String&gt; map) {
+<span class="fc" id="L184">        var value = map.get(OPTION_KEY_LOG_LEVEL);</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">        if (value != null) {</span>
+            try {
+<span class="fc" id="L187">                return JdbcLogLevel.LogLevel.valueOf(value.toUpperCase());</span>
+<span class="nc" id="L188">            } catch (Exception e) {</span>
+<span class="nc" id="L189">                this.warn(&quot;Found invalid log level. Use default ERROR.&quot;, &quot;value&quot;, value);</span>
+            }
+        }
+<span class="fc" id="L192">        return JdbcLogLevel.LogLevel.ERROR;</span>
+    }
+
+    private void addKeyValue(StringBuilder sb, boolean sep, @Nullable Object key, @Nullable Object value) {
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        if (sep) {</span>
+<span class="fc" id="L197">            sb.append(&quot;, &quot;);</span>
+        }
+<span class="fc bfc" id="L199" title="All 2 branches covered.">        if (key != null) {</span>
+<span class="fc" id="L200">            sb.append(key);</span>
+<span class="fc" id="L201">            sb.append('=');</span>
+        }
+<span class="fc" id="L203">        addValueTo(sb, value);</span>
+<span class="fc" id="L204">    }</span>
+
+    private void addValueTo(StringBuilder sb, @Nullable Object value) {
+<span class="fc bfc" id="L207" title="All 2 branches covered.">        if (value instanceof Msg.Messages messages) {</span>
+<span class="fc" id="L208">            sb.append(messages);</span>
+<span class="fc bfc" id="L209" title="All 2 branches covered.">        } else if (value instanceof Iterable&lt;?&gt; iterable) {</span>
+<span class="fc" id="L210">            boolean sep = false;</span>
+<span class="fc" id="L211">            sb.append('[');</span>
+<span class="pc bpc" id="L212" title="1 of 2 branches missed.">            if (iterable instanceof Collection&lt;?&gt; c) {</span>
+<span class="fc" id="L213">                sb.append(&quot;size:&quot;);</span>
+<span class="fc" id="L214">                sb.append(c.size());</span>
+<span class="fc" id="L215">                sep = true;</span>
+            }
+<span class="fc bfc" id="L217" title="All 2 branches covered.">            for (Object item : iterable) {</span>
+<span class="pc bpc" id="L218" title="1 of 2 branches missed.">                if (sep) {</span>
+<span class="fc" id="L219">                    sb.append(&quot;, &quot;);</span>
+                } else {
+<span class="nc" id="L221">                    sep = true;</span>
+                }
+<span class="fc bfc" id="L223" title="All 2 branches covered.">                if (item instanceof Element e) {</span>
+<span class="fc" id="L224">                    sb.append(e.getSimpleName());</span>
+                } else {
+<span class="fc" id="L226">                    sb.append(item);</span>
+                }
+<span class="fc" id="L228">            }</span>
+<span class="fc" id="L229">            sb.append(']');</span>
+<span class="fc bfc" id="L230" title="All 2 branches covered.">        } else if (value instanceof Element e) {</span>
+<span class="fc" id="L231">            this.addQualifiedName(sb, e);</span>
+        } else {
+<span class="fc" id="L233">            sb.append(value);</span>
+        }
+<span class="fc" id="L235">    }</span>
+
+    private void addQualifiedName(StringBuilder sb, Element element) {
+<span class="fc bfc" id="L238" title="All 2 branches covered.">        if (element instanceof PackageElement p) {</span>
+<span class="fc" id="L239">            sb.append(p.getQualifiedName());</span>
+<span class="fc bfc" id="L240" title="All 2 branches covered.">        } else if (element instanceof TypeElement t) {</span>
+<span class="fc" id="L241">            sb.append(t.getQualifiedName());</span>
+<span class="fc bfc" id="L242" title="All 2 branches covered.">        } else if (element instanceof ExecutableElement e) {</span>
+<span class="fc" id="L243">            sb.append(e.getEnclosingElement());</span>
+<span class="fc" id="L244">            sb.append(&quot;.&quot;);</span>
+<span class="fc" id="L245">            sb.append(e.getSimpleName());</span>
+        } else {
+<span class="fc" id="L247">            sb.append(element.getSimpleName());</span>
+        }
+<span class="fc" id="L249">        var pos = this.ctx.sourcePosition(element);</span>
+<span class="fc bfc" id="L250" title="All 2 branches covered.">        if (pos != null) {</span>
+<span class="fc" id="L251">            sb.append(' ').append(pos);</span>
+        }
+<span class="fc" id="L253">    }</span>
+
+    public static String formatException(Exception exception) {
+<span class="fc" id="L256">        var sb = new StringBuilder();</span>
+<span class="fc" id="L257">        sb.append(exception);</span>
+<span class="fc" id="L258">        addStackTrace(sb, exception.getStackTrace());</span>
+<span class="fc" id="L259">        return sb.toString();</span>
+    }
+
+    public static String printStackTrace() {
+<span class="nc" id="L263">        var sb = new StringBuilder();</span>
+<span class="nc" id="L264">        var stackTrace = Thread.currentThread().getStackTrace();</span>
+<span class="nc" id="L265">        addStackTrace(sb, Arrays.copyOfRange(stackTrace, 2, stackTrace.length));</span>
+<span class="nc" id="L266">        return sb.toString();</span>
+    }
+
+    private static void addStackTrace(StringBuilder sb, StackTraceElement[] list) {
+<span class="fc" id="L270">        int lastIndex = list.length - 1;</span>
+<span class="pc bpc" id="L271" title="1 of 4 branches missed.">        while (lastIndex &gt; 0 &amp;&amp; !list[lastIndex - 1].getClassName().startsWith(&quot;io.kaumei&quot;)) {</span>
+<span class="fc" id="L272">            lastIndex--;</span>
+        }
+<span class="fc bfc" id="L274" title="All 2 branches covered.">        for (int i = 0; i &lt;= lastIndex; i++) {</span>
+<span class="fc" id="L275">            sb.append(&quot;\n\tat &quot;);</span>
+<span class="fc" id="L276">            sb.append(list[i]);</span>
+        }
+<span class="fc" id="L278">        sb.append('\n');</span>
+<span class="fc" id="L279">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JavaType.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.model</a> &gt; <span class="el_source">JavaType.java</span></div><h1>JavaType.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.model;
+
+import io.kaumei.jdbc.anno.ctx.Context;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+
+public class JavaType {
+
+    private final Context ctx;
+    private final TypeElement typeElement;
+    private final TypeMirror typeMirror;
+    private final boolean hasGenerics;
+
+<span class="fc" id="L21">    public JavaType(Context ctx, TypeElement typeElement) {</span>
+<span class="fc" id="L22">        this.ctx = ctx;</span>
+<span class="fc" id="L23">        this.typeElement = typeElement;</span>
+<span class="fc bfc" id="L24" title="All 2 branches covered.">        this.hasGenerics = !typeElement.getTypeParameters().isEmpty();</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">        this.typeMirror = hasGenerics ? this.ctx.erasure(typeElement.asType()) : typeElement.asType();</span>
+<span class="pc bpc" id="L26" title="1 of 2 branches missed.">        if (this.typeMirror.getKind() == TypeKind.ERROR) {</span>
+<span class="nc" id="L27">            throw new IllegalArgumentException(&quot;Type has ERROR kind: &quot; + this.typeMirror);</span>
+        }
+<span class="fc" id="L29">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L33">        return &quot;JavaType{typeElement=&quot; + typeElement +</span>
+                &quot;, typeMirror=&quot; + typeMirror +
+                &quot;, hasGenerics=&quot; + hasGenerics +
+                '}';
+    }
+
+    public TypeMirror typeMirror() {
+<span class="fc" id="L40">        return this.typeMirror;</span>
+    }
+
+    public boolean isSameType(@Nullable TypeMirror other) {
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (other == null) {</span>
+<span class="nc" id="L45">            return false;</span>
+        }
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        return this.ctx.isSameType(typeMirror, this.hasGenerics ? this.ctx.erasure(other) : other);</span>
+    }
+
+    public boolean isSupertypeOf(TypeMirror other) {
+<span class="fc" id="L51">        return this.ctx.isSubtype(other, this.typeMirror);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

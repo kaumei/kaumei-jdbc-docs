@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SourceMethod.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.model</a> &gt; <span class="el_source">SourceMethod.java</span></div><h1>SourceMethod.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.model;
+
+import io.kaumei.jdbc.anno.ctx.ConfigService;
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.annotation.JdbcUpdate;
+import io.kaumei.jdbc.annotation.config.*;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+
+import static java.util.Objects.requireNonNull;
+
+public class SourceMethod {
+
+    public static SourceMethod of(Context ctx, ExecutableElement method) {
+<span class="fc" id="L23">        var messages = Msg.builder();</span>
+<span class="fc" id="L24">        var annoMap = AnnoMap.of(ctx, method);</span>
+<span class="fc" id="L25">        SourceMethodParameter parameter = null;</span>
+
+        // ----- check entry points
+<span class="fc" id="L28">        var entryPoint = EntryPoint.of(ctx, annoMap);</span>
+<span class="fc" id="L29">        var entryPoints = entryPoint.countEntryPoints();</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">        if (entryPoints == 0) {</span>
+<span class="fc" id="L31">            messages.add(JdbcMsg.jdbcMethodRequiresEntryPointAnnotation());</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        } else if (entryPoints &gt; 1) {</span>
+<span class="fc" id="L33">            messages.add(JdbcMsg.jdbcMethodRequiresSingleEntryPointAnnotation());</span>
+<span class="fc bfc" id="L34" title="All 2 branches covered.">        } else if (entryPoint.selectOpt != null) {</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">            if (entryPoint.selectOpt.sql().value().isBlank()) {</span>
+<span class="fc" id="L36">                messages.add(JdbcMsg.jdbcSelectRequiresSqlString());</span>
+            } else {
+<span class="fc" id="L38">                parameter = SourceMethodParameter.of(ctx, messages, method, entryPoint.selectOpt.sql());</span>
+            }
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        } else if (entryPoint.updateOpt != null) {</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">            if (entryPoint.updateOpt.sql().value().isBlank()) {</span>
+<span class="fc" id="L42">                messages.add(JdbcMsg.jdbcUpdateRequiresSqlString());</span>
+            } else {
+<span class="fc" id="L44">                parameter = SourceMethodParameter.of(ctx, messages, method, entryPoint.updateOpt.sql());</span>
+            }
+        }
+
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (parameter == null) {</span>
+<span class="fc" id="L49">            parameter = SourceMethodParameter.of(ctx, messages, method);</span>
+        }
+
+<span class="fc" id="L52">        var jdbcName = ctx.JDBC_NAME.getAnnoOpt(method);</span>
+<span class="fc" id="L53">        messages.add(jdbcName);</span>
+<span class="fc" id="L54">        var jdbcConverterName = ctx.JDBC_CONVERTER_NAME.getAnnoOpt(method);</span>
+<span class="fc bfc" id="L55" title="All 4 branches covered.">        if (jdbcConverterName != null &amp;&amp; jdbcConverterName.isBlankName()) {</span>
+<span class="fc" id="L56">            messages.add(JdbcMsg.annotationValueMustNotBeBlank(&quot;@JdbcConverterName&quot;));</span>
+        }
+
+<span class="fc" id="L59">        return new SourceMethod(ctx, method, entryPoint, annoMap, parameter, messages.build());</span>
+    }
+
+<span class="fc" id="L62">    public record EntryPoint(JavaAnnoType.@Nullable JdbcSelectRecord selectOpt,</span>
+                             JavaAnnoType.@Nullable JdbcUpdateRecord updateOpt,
+                             JavaAnnoType.@Nullable JdbcNativeRecord nativeJdbcOpt,
+                             JavaAnnoType.@Nullable JdbcBatchUpdateRecord batchUpdateOpt) {
+
+        static EntryPoint of(Context ctx, AnnoMap map) {
+<span class="fc" id="L68">            return new EntryPoint(map.getOpt(ctx.JDBC_SELECT), map.getOpt(ctx.JDBC_UPDATE), map.getOpt(ctx.JDBC_NATIVE), map.getOpt(ctx.JDBC_BATCH_UPDATE));</span>
+        }
+
+        public JavaAnnoType.JdbcUpdateRecord update() {
+<span class="fc" id="L72">            return requireNonNull(updateOpt);</span>
+        }
+
+        public JavaAnnoType.JdbcNativeRecord nativeJdbc() {
+<span class="fc" id="L76">            return requireNonNull(nativeJdbcOpt);</span>
+        }
+
+        int countEntryPoints() {
+<span class="fc" id="L80">            int count = 0;</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">            if (selectOpt != null) {</span>
+<span class="fc" id="L82">                count++;</span>
+            }
+<span class="fc bfc" id="L84" title="All 2 branches covered.">            if (updateOpt != null) {</span>
+<span class="fc" id="L85">                count++;</span>
+            }
+<span class="fc bfc" id="L87" title="All 2 branches covered.">            if (nativeJdbcOpt != null) {</span>
+<span class="fc" id="L88">                count++;</span>
+            }
+<span class="fc bfc" id="L90" title="All 2 branches covered.">            if (batchUpdateOpt != null) {</span>
+<span class="fc" id="L91">                count++;</span>
+            }
+<span class="fc" id="L93">            return count;</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final Context ctx;
+    private final ExecutableElement method;
+    private final EntryPoint entryPoint;
+    private final AnnoMap annoMap;
+    private final SourceMethodParameter parameter;
+    private final Msg.Messages messages;
+
+<span class="fc" id="L106">    SourceMethod(Context ctx, ExecutableElement method, EntryPoint entryPoint, AnnoMap annoMap, SourceMethodParameter parameter, Msg.Messages messages) {</span>
+<span class="fc" id="L107">        this.ctx = ctx;</span>
+<span class="fc" id="L108">        this.method = method;</span>
+<span class="fc" id="L109">        this.entryPoint = entryPoint;</span>
+<span class="fc" id="L110">        this.annoMap = annoMap;</span>
+<span class="fc" id="L111">        this.parameter = parameter;</span>
+<span class="fc" id="L112">        this.messages = messages;</span>
+<span class="fc" id="L113">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L117">        return method.getEnclosingElement() + &quot;.&quot; + method.getSimpleName() + &quot;:&quot; + method.getReturnType();</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public ExecutableElement method() {
+<span class="fc" id="L123">        return method;</span>
+    }
+
+    public EntryPoint entryPoint() {
+<span class="fc" id="L127">        return entryPoint;</span>
+    }
+
+    public AnnoMap annoMap() {
+<span class="fc" id="L131">        return annoMap;</span>
+    }
+
+    public TypeElement parent() {
+<span class="fc" id="L135">        return (TypeElement) this.method.getEnclosingElement();</span>
+    }
+
+    public SourceMethodParameter parameter() {
+<span class="fc" id="L139">        return parameter;</span>
+    }
+
+    public boolean hasMessages() {
+<span class="fc" id="L143">        return messages.hasMessages();</span>
+    }
+
+    public Msg.Messages messages() {
+<span class="fc" id="L147">        return messages;</span>
+    }
+
+    public SQLNameDV jdbcName() {
+<span class="fc" id="L151">        return annoMap.get(ctx.JDBC_NAME, SQLNameDV.noName());</span>
+    }
+
+    public ConverterNameDV jdbcConverterName() {
+<span class="fc" id="L155">        return annoMap.get(ctx.JDBC_CONVERTER_NAME, ConverterNameDV.unnamed());</span>
+    }
+
+    public JdbcUpdate.GeneratedValues jdbcReturnGeneratedValues() {
+<span class="fc" id="L159">        var value = entryPoint.update().returnGeneratedValues();</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">        if (value == JdbcUpdate.GeneratedValues.DEFAULT) {</span>
+<span class="fc" id="L161">            value = this.ctx.kaumeiConfig.jdbcReturnGeneratedValues();</span>
+        }
+<span class="fc" id="L163">        return value;</span>
+    }
+
+    public JdbcNoMoreRows.Kind jdbcNoMoreRows() {
+<span class="fc" id="L167">        return this.ctx.kaumeiConfig.searchOnMethod(this.ctx.kaumeiConfig.NO_MORE_ROWS, this);</span>
+    }
+
+    public JdbcNoRows.Kind jdbcNoRows() {
+<span class="fc" id="L171">        return this.ctx.kaumeiConfig.searchOnMethod(this.ctx.kaumeiConfig.NO_ROWS, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;Integer&gt; jdbcFetchSize() {
+<span class="fc" id="L175">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.FETCH_SIZE, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;Integer&gt; jdbcMaxRows() {
+<span class="fc" id="L179">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.MAX_ROWS, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;JdbcResultSetConcurrency.Kind&gt; jdbcResultSetConcurrency() {
+<span class="fc" id="L183">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.RESULT_SET_CONCURRENCY, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;JdbcResultSetType.Kind&gt; jdbcResultSetType() {
+<span class="fc" id="L187">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.RESULT_SET_TYPE, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;JdbcFetchDirection.Kind&gt; jdbcFetchDirection() {
+<span class="fc" id="L191">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.FETCH_DIRECTION, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;Integer&gt; jdbcQueryTimeout() {
+<span class="fc" id="L195">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.QUERY_TIMEOUT, this);</span>
+    }
+
+    public ConfigService.@Nullable OptionValue&lt;Integer&gt; jdbcBatchSize() {
+<span class="fc" id="L199">        return this.ctx.kaumeiConfig.search(this.ctx.kaumeiConfig.BATCH_SIZE, this);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public Msg.Messages unusedAnno() {
+<span class="fc" id="L205">        var messages = Msg.builder();</span>
+<span class="fc bfc" id="L206" title="All 2 branches covered.">        if (annoMap.hasUnused()) {</span>
+<span class="fc" id="L207">            messages.add(JdbcMsg.javaMethodHasUnusedAnnotations(annoMap.unused()));</span>
+        }
+<span class="fc" id="L209">        parameter.addUnusedAnno(messages);</span>
+<span class="fc" id="L210">        return messages.build();</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public JdbcTypeMirror&lt;ExecutableElement&gt; returnType() {
+<span class="fc" id="L216">        return ctx.jdbcTypeMirror(this.method);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

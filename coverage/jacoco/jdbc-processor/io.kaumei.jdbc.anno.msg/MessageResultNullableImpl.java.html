@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MessageResultNullableImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.msg</a> &gt; <span class="el_source">MessageResultNullableImpl.java</span></div><h1>MessageResultNullableImpl.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.msg;
+
+import org.jspecify.annotations.Nullable;
+
+final class MessageResultNullableImpl&lt;T&gt; implements Msg.NullableResult&lt;T&gt; {
+    private final @Nullable T value;
+    private final Msg.Messages messages;
+
+<span class="fc" id="L13">    MessageResultNullableImpl(Msg.Messages messages) {</span>
+<span class="fc bfc" id="L14" title="All 2 branches covered.">        if (messages.hasNoMessages()) {</span>
+<span class="fc" id="L15">            throw new IllegalArgumentException(&quot;messages must not be empty&quot;);</span>
+        }
+<span class="fc" id="L17">        this.value = null;</span>
+<span class="fc" id="L18">        this.messages = messages;</span>
+<span class="fc" id="L19">    }</span>
+
+<span class="fc" id="L21">    MessageResultNullableImpl(@Nullable T value) {</span>
+<span class="fc" id="L22">        this.value = value;</span>
+<span class="fc" id="L23">        this.messages = Msg.empty();</span>
+<span class="fc" id="L24">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc bfc" id="L28" title="All 2 branches covered.">        if (this.messages.hasMessages()) {</span>
+<span class="fc" id="L29">            return &quot;MessageResultNullable&quot; + this.messages;</span>
+        } else {
+<span class="fc" id="L31">            return &quot;MessageResultNullable[&quot; + this.value + &quot;]&quot;;</span>
+        }
+    }
+
+    // interface Msg.MessageState ---------------------------------------------
+
+    @Override
+    public boolean hasMessages() {
+<span class="fc" id="L39">        return this.messages.hasMessages();</span>
+    }
+
+    @Override
+    public Msg.Messages messages() {
+<span class="fc" id="L44">        return this.messages;</span>
+    }
+
+    // interface Msg.NullableResult -------------------------------------------
+
+    @Override
+    public boolean isNull() {
+<span class="pc bpc" id="L51" title="1 of 4 branches missed.">        return !messages.hasMessages() &amp;&amp; value == null;</span>
+    }
+
+    @Override
+    public T value() {
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        if (messages.hasMessages()) {</span>
+<span class="fc" id="L57">            throw new IllegalStateException(&quot;messages are not empty&quot;);</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        } else if (value == null) {</span>
+<span class="fc" id="L59">            throw new IllegalStateException(&quot;value is null&quot;);</span>
+        }
+<span class="fc" id="L61">        return value;</span>
+    }
+
+    @Override
+    public @Nullable T valueOpt() {
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        if (messages.hasMessages()) {</span>
+<span class="fc" id="L67">            throw new IllegalStateException(&quot;messages are not empty&quot;);</span>
+        }
+<span class="fc" id="L69">        return this.value;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

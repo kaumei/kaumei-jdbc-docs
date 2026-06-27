@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AnnoMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.model</a> &gt; <span class="el_source">AnnoMap.java</span></div><h1>AnnoMap.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.model;
+
+import io.kaumei.jdbc.anno.ProcessorException;
+import io.kaumei.jdbc.anno.ctx.ConfigService;
+import io.kaumei.jdbc.anno.ctx.Context;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.AnnotatedConstruct;
+import javax.lang.model.element.TypeElement;
+import java.util.*;
+
+public class AnnoMap {
+
+    public static AnnoMap of(Context ctx, AnnotatedConstruct element) {
+<span class="fc" id="L19">        var anno2value = new HashMap&lt;JavaAnnoType&lt;?&gt;, Object&gt;();</span>
+<span class="fc bfc" id="L20" title="All 2 branches covered.">        for (var annoMirror : element.getAnnotationMirrors()) {</span>
+<span class="pc bpc" id="L21" title="1 of 2 branches missed.">            if (annoMirror.getAnnotationType().asElement() instanceof TypeElement te) { // sanity-check</span>
+<span class="fc" id="L22">                var anno = ctx.KAUMEI_ANNO.get(te.getQualifiedName());</span>
+<span class="fc bfc" id="L23" title="All 2 branches covered.">                if (anno != null) {</span>
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">                    if (anno2value.put(anno, anno.getAnno(annoMirror)) != null) { // sanity-check</span>
+<span class="nc" id="L25">                        throw new ProcessorException(&quot;Duplicate annotation: &quot; + anno); // sanity-check</span>
+                    }
+                }
+            }
+<span class="fc" id="L29">        }</span>
+<span class="fc" id="L30">        return new AnnoMap(anno2value);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final Map&lt;JavaAnnoType&lt;?&gt;, Object&gt; anno2value;
+    private final Set&lt;JavaAnnoType&lt;?&gt;&gt; unused;
+
+<span class="fc" id="L38">    private AnnoMap(Map&lt;JavaAnnoType&lt;?&gt;, Object&gt; anno2value) {</span>
+<span class="fc" id="L39">        this.anno2value = anno2value;</span>
+<span class="fc" id="L40">        this.unused = new HashSet&lt;&gt;(this.anno2value.keySet());</span>
+<span class="fc" id="L41">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L45">        return anno2value.toString();</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public void consume(JavaAnnoType&lt;?&gt; anno) {
+<span class="fc" id="L51">        unused.remove(anno);</span>
+<span class="fc" id="L52">    }</span>
+
+    @Nullable
+    public &lt;T&gt; T getOpt(JavaAnnoType&lt;T&gt; anno) {
+<span class="fc" id="L56">        var value = this.anno2value.get(anno);</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L58">            unused.remove(anno);</span>
+<span class="fc" id="L59">            return anno.cast(value);</span>
+        }
+<span class="fc" id="L61">        return null;</span>
+    }
+
+    public &lt;T&gt; T get(JavaAnnoType&lt;T&gt; anno, T defaultValue) {
+<span class="fc" id="L65">        var value = this.anno2value.get(anno);</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L67">            unused.remove(anno);</span>
+<span class="fc" id="L68">            return anno.cast(value);</span>
+        }
+<span class="fc" id="L70">        return defaultValue;</span>
+    }
+
+
+    @Nullable
+    public &lt;T&gt; T getOpt(ConfigService.Option&lt;T&gt; option) {
+<span class="fc" id="L76">        var value = this.anno2value.get(option.anno());</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L78">            unused.remove(option.anno());</span>
+<span class="fc" id="L79">            return option.cast(value);</span>
+        }
+<span class="fc" id="L81">        return null;</span>
+    }
+
+    @Nullable
+    public &lt;T&gt; T getIfNotDefault(ConfigService.Option&lt;T&gt; option) {
+<span class="fc" id="L86">        var value = this.anno2value.get(option.anno());</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (option.isNotDefaultValue(value)) {</span>
+<span class="fc" id="L88">            unused.remove(option.anno());</span>
+<span class="fc" id="L89">            return option.cast(value);</span>
+        }
+<span class="fc" id="L91">        return null;</span>
+    }
+
+    @Nullable
+    public &lt;T&gt; T getIfDefault(ConfigService.Option&lt;T&gt; option) {
+<span class="fc" id="L96">        var value = this.anno2value.get(option.anno());</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        if (option.isDefaultValue(value)) {</span>
+<span class="fc" id="L98">            unused.remove(option.anno());</span>
+<span class="fc" id="L99">            return option.cast(value);</span>
+        }
+<span class="fc" id="L101">        return null;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public boolean hasUnused() {
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        return !unused.isEmpty();</span>
+    }
+
+    public Set&lt;JavaAnnoType&lt;?&gt;&gt; unused() {
+<span class="fc" id="L111">        return Collections.unmodifiableSet(unused);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

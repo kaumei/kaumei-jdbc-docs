@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MessageImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.msg</a> &gt; <span class="el_source">MessageImpl.java</span></div><h1>MessageImpl.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.msg;
+
+import org.jspecify.annotations.Nullable;
+
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.function.Supplier;
+
+import static java.util.Objects.requireNonNull;
+
+sealed class MessageImpl implements Msg.Message
+        permits JdbcMsg.InvalidParamConverter, JdbcMsg.InvalidReturnConverter {
+
+    private final String text;
+
+    @SuppressWarnings(&quot;ConstantConditions&quot;)
+<span class="fc" id="L21">    MessageImpl(String text) {</span>
+<span class="fc bfc" id="L22" title="All 2 branches covered.">        if (text == null) {</span>
+<span class="fc" id="L23">            throw new IllegalArgumentException(&quot;text must not be null&quot;);</span>
+<span class="fc bfc" id="L24" title="All 2 branches covered.">        } else if (text.isBlank()) {</span>
+<span class="fc" id="L25">            throw new IllegalArgumentException(&quot;text must not be blank&quot;);</span>
+        }
+<span class="fc" id="L27">        this.text = text;</span>
+<span class="fc" id="L28">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L32">        return '[' + text + ']';</span>
+    }
+
+    // interface Iterable&lt;Msg.Message&gt; ----------------------------------------
+
+    @Override
+    public boolean equals(@Nullable Object o) {
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        if (this == o) {</span>
+<span class="fc" id="L40">            return true;</span>
+<span class="pc bpc" id="L41" title="2 of 4 branches missed.">        } else if (o == null || getClass() != o.getClass()) {</span>
+<span class="nc" id="L42">            return false;</span>
+        }
+<span class="fc" id="L44">        return text.equals(((MessageImpl) o).text);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L49">        return this.text.hashCode();</span>
+    }
+
+    @Override
+    public Iterator&lt;Msg.Message&gt; iterator() {
+<span class="fc" id="L54">        return new LocalIterator();</span>
+    }
+
+    // interface Msg.Messages -------------------------------------------------
+
+    @Override
+    public String text() {
+<span class="fc" id="L61">        return this.text;</span>
+    }
+
+    @Override
+    public boolean hasMessages() {
+<span class="fc" id="L66">        return true;</span>
+    }
+
+    @Override
+    public boolean hasNoMessages() {
+<span class="fc" id="L71">        return false;</span>
+    }
+
+    @Override
+    public String join(String sep) {
+<span class="fc" id="L76">        return text;</span>
+    }
+
+    @Override
+    public void join(StringBuilder sb, String sep) {
+<span class="fc" id="L81">        sb.append(text);</span>
+<span class="fc" id="L82">    }</span>
+
+    @Override
+    public void requireEmpty() {
+<span class="fc" id="L86">        throw new IllegalStateException(&quot;List not empty: &quot; + text);</span>
+    }
+
+    @Override
+    public Msg.Messages requireNoneEmpty() {
+<span class="fc" id="L91">        return this;</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.Result&lt;T&gt; build(T value) {
+<span class="fc" id="L96">        requireNonNull(value, &quot;value&quot;);</span>
+<span class="fc" id="L97">        return new MessageResultImpl&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.Result&lt;T&gt; build(Supplier&lt;T&gt; func) {
+<span class="fc" id="L102">        requireNonNull(func, &quot;func&quot;);</span>
+<span class="fc" id="L103">        return new MessageResultImpl&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.NullableResult&lt;T&gt; buildOpt(@Nullable T value) {
+<span class="fc" id="L108">        return new MessageResultNullableImpl&lt;&gt;(this);</span>
+    }
+
+    // interface Comparable&lt;Msg.Message&gt; --------------------------------------
+
+    @Override
+    public int compareTo(Msg.Message o) {
+<span class="fc" id="L115">        return text.compareTo(o.text());</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L120">    private final class LocalIterator implements Iterator&lt;Msg.Message&gt; {</span>
+<span class="fc" id="L121">        boolean next = true;</span>
+
+        @Override
+        public boolean hasNext() {
+<span class="fc" id="L125">            return next;</span>
+        }
+
+        @Override
+        public Msg.Message next() {
+<span class="fc bfc" id="L130" title="All 2 branches covered.">            if (!next) {</span>
+<span class="fc" id="L131">                throw new NoSuchElementException();</span>
+            }
+<span class="fc" id="L133">            next = false;</span>
+<span class="fc" id="L134">            return MessageImpl.this;</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

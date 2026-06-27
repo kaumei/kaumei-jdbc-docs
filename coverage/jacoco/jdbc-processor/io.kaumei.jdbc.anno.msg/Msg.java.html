@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Msg.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.msg</a> &gt; <span class="el_source">Msg.java</span></div><h1>Msg.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.msg;
+
+import org.jspecify.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.TreeSet;
+import java.util.function.Supplier;
+
+public interface Msg {
+
+    static Msg.Builder builder() {
+<span class="fc" id="L16">        return new MsgBuilderImpl();</span>
+    }
+
+    static Msg.Message of(String text) {
+<span class="fc" id="L20">        return new MessageImpl(text);</span>
+    }
+
+    static Messages empty() {
+<span class="fc" id="L24">        return MessagesEmptyImpl.EMPTY_LIST;</span>
+    }
+
+    static &lt;T&gt; Msg.Result&lt;T&gt; result(T value) {
+<span class="fc" id="L28">        return new MessageResultImpl&lt;&gt;(value);</span>
+    }
+
+    static &lt;T&gt; Msg.Result&lt;T&gt; result(Messages messages) {
+<span class="fc" id="L32">        return new MessageResultImpl&lt;&gt;(messages);</span>
+    }
+
+    static &lt;T&gt; Msg.NullableResult&lt;T&gt; nullableResult(@Nullable T value) {
+<span class="fc" id="L36">        return new MessageResultNullableImpl&lt;T&gt;(value);</span>
+    }
+
+    static &lt;T&gt; Msg.NullableResult&lt;T&gt; nullableResult(Messages messages) {
+<span class="fc" id="L40">        return new MessageResultNullableImpl&lt;&gt;(messages);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    static Messages merge(Msg.Message msg1, Msg.Message msg2) {
+<span class="fc" id="L46">        var s = new TreeSet&lt;Msg.Message&gt;();</span>
+<span class="fc" id="L47">        s.add(msg1);</span>
+<span class="fc" id="L48">        s.add(msg2);</span>
+<span class="fc" id="L49">        return new MessagesImpl(s);</span>
+    }
+
+    static Messages merge(Msg.Message... messages) {
+<span class="nc" id="L53">        var s = new TreeSet&lt;Msg.Message&gt;();</span>
+<span class="nc" id="L54">        Collections.addAll(s, messages);</span>
+<span class="nc" id="L55">        return new MessagesImpl(s);</span>
+    }
+
+    static Messages merge(Messages msgSet1, Messages msgSet2, Msg.Message msg) {
+<span class="fc" id="L59">        var s = new TreeSet&lt;Msg.Message&gt;();</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        for (var item : msgSet1) {</span>
+<span class="fc" id="L61">            s.add(item);</span>
+<span class="fc" id="L62">        }</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        for (var item : msgSet2) {</span>
+<span class="fc" id="L64">            s.add(item);</span>
+<span class="fc" id="L65">        }</span>
+<span class="fc" id="L66">        s.add(msg);</span>
+<span class="fc" id="L67">        return new MessagesImpl(s);</span>
+    }
+
+    static Messages merge(Messages msgSet1, Messages msgSet2) {
+<span class="fc" id="L71">        var s = new TreeSet&lt;Msg.Message&gt;();</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        for (var item : msgSet1) {</span>
+<span class="fc" id="L73">            s.add(item);</span>
+<span class="fc" id="L74">        }</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        for (var item : msgSet2) {</span>
+<span class="fc" id="L76">            s.add(item);</span>
+<span class="fc" id="L77">        }</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">        return s.isEmpty() ? Msg.empty() : new MessagesImpl(s);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    sealed interface Builder permits MsgBuilderImpl {
+
+        boolean hasMessages();
+
+        boolean hasNoMessages();
+
+        String join(String sep);
+
+        void requireEmpty();
+
+        Messages build();
+
+        /**
+         * Will fail if the value is null, regardless of whether messages are
+         * present or not.
+         * For a lazy null check, use build(Supplier&lt;T&gt; func).
+         */
+        &lt;T&gt; Result&lt;T&gt; build(T value);
+
+        &lt;T&gt; Result&lt;T&gt; build(Supplier&lt;T&gt; func);
+
+        &lt;T&gt; NullableResult&lt;T&gt; buildOpt(@Nullable T value);
+
+        Builder add(Message msg);
+
+        Builder add(boolean test, Message msg);
+
+        Builder add(Supplier&lt;Boolean&gt; test, Message msg);
+
+        Builder add(Messages msg);
+
+        Builder add(@Nullable HasMessages value);
+    }
+
+    sealed interface Messages extends Iterable&lt;Msg.Message&gt; permits MessagesEmptyImpl, MessagesImpl, Message {
+
+        boolean hasMessages();
+
+        boolean hasNoMessages();
+
+        String join(String sep);
+
+        void join(StringBuilder sb, String sep);
+
+        void requireEmpty();
+
+        Messages requireNoneEmpty();
+
+        /**
+         * Will fail if the value is null, regardless of whether messages are
+         * present or not.
+         * For a lazy null check, use build(Supplier&lt;T&gt; func).
+         */
+        &lt;T&gt; Result&lt;T&gt; build(T value);
+
+        &lt;T&gt; Result&lt;T&gt; build(Supplier&lt;T&gt; func);
+
+        &lt;T&gt; NullableResult&lt;T&gt; buildOpt(@Nullable T value);
+    }
+
+    sealed interface Message extends Messages, Comparable&lt;Msg.Message&gt; permits MessageImpl {
+        String text();
+    }
+
+    interface HasMessages {
+
+        boolean hasMessages();
+
+        Messages messages();
+    }
+
+    sealed interface Result&lt;T&gt; extends HasMessages permits MessageResultImpl {
+
+        T value();
+
+        /**
+         * @return the value or in case the result has messages null
+         */
+        @Nullable T valueOrNull();
+    }
+
+    sealed interface NullableResult&lt;T&gt; extends HasMessages permits MessageResultNullableImpl {
+
+        /**
+         * @return if value is null and no messages
+         */
+        boolean isNull();
+
+        /**
+         * @return the value and ensures to be always not null
+         * @throws IllegalStateException if the result has messages or the value is null
+         */
+        T value();
+
+        @Nullable T valueOpt();
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

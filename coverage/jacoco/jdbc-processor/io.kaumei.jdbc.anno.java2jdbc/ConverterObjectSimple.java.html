@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConverterObjectSimple.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.java2jdbc</a> &gt; <span class="el_source">ConverterObjectSimple.java</span></div><h1>ConverterObjectSimple.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.java2jdbc;
+
+import com.palantir.javapoet.CodeBlock;
+import io.kaumei.jdbc.anno.gen.KaumeiLib;
+import io.kaumei.jdbc.anno.gen.TargetMethod;
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.store.SourceDV;
+
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
+import javax.lang.model.type.TypeMirror;
+
+final class ConverterObjectSimple extends Java2JdbcConverter {
+
+<span class="fc" id="L20">    record Placeholder(TypeMirror type, SourceDV source, ExecutableElement method,</span>
+                       SearchKey other) implements Java2JdbcConverter.Placeholder {
+        @Override
+        public SearchKey otherPlaceholder() {
+<span class="fc" id="L24">            return other;</span>
+        }
+
+        @Override
+        public Java2JdbcConverter resolve(Java2JdbcConverter converter) {
+<span class="fc" id="L29">            return new ConverterObjectSimple(this, converter);</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final Name methodName;
+    private final Java2JdbcConverter converter;
+
+    private ConverterObjectSimple(Placeholder placeholder, Java2JdbcConverter converter) {
+<span class="fc" id="L39">        super(placeholder.type, placeholder.source);</span>
+<span class="fc" id="L40">        this.methodName = placeholder.method.getSimpleName();</span>
+<span class="fc" id="L41">        this.converter = converter;</span>
+<span class="fc" id="L42">    }</span>
+
+    @Override
+    public void setParameter(TargetMethod builder, CodeBlock paramAccess, CodeBlock columnIndex, OptionalFlag optional) {
+<span class="fc" id="L46">        builder.addComment(&quot;ConverterObjectSimple&quot;, &quot;type&quot;, this.type(), &quot;optional&quot;, optional);</span>
+<span class="fc" id="L47">        var localName = builder.tempVarName(paramAccess);</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (optional.isNonNull()) {</span>
+<span class="fc" id="L49">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
+<span class="fc" id="L50">            builder.addStatement(KaumeiLib.throwNullPointerException(paramAccess));</span>
+<span class="fc" id="L51">            builder.endControlFlow();</span>
+<span class="fc" id="L52">            builder.addStatement(&quot;var $L = $L.$N()&quot;, localName, paramAccess, methodName);</span>
+<span class="fc" id="L53">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        } else if (converter.type().getKind().isPrimitive()) {</span>
+<span class="fc" id="L55">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
+<span class="fc" id="L56">            builder.addStatement(builder.setNull(converter.type(), columnIndex));</span>
+<span class="fc" id="L57">            builder.nextControlFlow(&quot;else&quot;);</span>
+<span class="fc" id="L58">            builder.addStatement(&quot;var $L = $L.$N()&quot;, localName, paramAccess, methodName);</span>
+<span class="fc" id="L59">            converter.setParameter(builder, localName, columnIndex, OptionalFlag.NON_NULL);</span>
+<span class="fc" id="L60">            builder.endControlFlow();</span>
+        } else {
+<span class="fc" id="L62">            builder.addStatement(&quot;var $L = $L == null ? null : $L.$N()&quot;, localName, paramAccess, paramAccess, methodName);</span>
+<span class="fc" id="L63">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+        }
+<span class="fc" id="L65">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

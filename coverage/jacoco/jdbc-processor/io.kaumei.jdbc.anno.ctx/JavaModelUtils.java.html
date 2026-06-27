@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JavaModelUtils.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.ctx</a> &gt; <span class="el_source">JavaModelUtils.java</span></div><h1>JavaModelUtils.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.ctx;
+
+import io.kaumei.jdbc.anno.ProcessorException;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.*;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
+import java.util.Objects;
+
+public final class JavaModelUtils {
+
+    private JavaModelUtils() {
+    }
+
+    public static ExecutableElement getStaticMethod(Element elem, CharSequence simpleMethodName) {
+<span class="fc" id="L22">        ExecutableElement found = null;</span>
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        for (var child : elem.getEnclosedElements()) {</span>
+<span class="fc bfc" id="L24" title="All 2 branches covered.">            if (child instanceof ExecutableElement method</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">                    &amp;&amp; isStatic(method)</span>
+<span class="pc bpc" id="L26" title="1 of 2 branches missed.">                    &amp;&amp; isVisible(method)</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">                    &amp;&amp; method.getSimpleName().contentEquals(simpleMethodName)) {</span>
+<span class="pc bpc" id="L28" title="1 of 2 branches missed.">                if (found == null) {</span>
+<span class="fc" id="L29">                    found = method;</span>
+                } else {
+<span class="nc" id="L31">                    throw new ProcessorException(&quot;To many methods found: &quot; + simpleMethodName, elem); // sanity-check</span>
+                }
+            }
+<span class="fc" id="L34">        }</span>
+        // sanity-check:on
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (found == null) {</span>
+<span class="nc" id="L37">            throw new ProcessorException(&quot;No method found: &quot; + simpleMethodName, elem);</span>
+        }
+        // sanity-check:off
+<span class="fc" id="L40">        return found;</span>
+    }
+
+    public static Name getQualifiedClassName(ExecutableElement element) {
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (element.getEnclosingElement() instanceof TypeElement typeElement) {</span>
+<span class="fc" id="L45">            return typeElement.getQualifiedName();</span>
+        }
+<span class="nc" id="L47">        throw new ProcessorException(&quot;Unknown element type: &quot; + element.getClass().getName()); // sanity-check</span>
+    }
+
+    public static boolean isVisible(Element element) {
+<span class="fc" id="L51">        var modifiers = element.getModifiers();</span>
+<span class="fc bfc" id="L52" title="All 4 branches covered.">        return !modifiers.contains(Modifier.PRIVATE) &amp;&amp; !modifiers.contains(Modifier.PROTECTED);</span>
+    }
+
+    public static boolean isStatic(Element element) {
+<span class="fc" id="L56">        var modifiers = element.getModifiers();</span>
+<span class="fc" id="L57">        return modifiers.contains(Modifier.STATIC);</span>
+    }
+
+    public static boolean isTopLevel(TypeElement element) {
+<span class="fc" id="L61">        return element.getEnclosingElement() instanceof PackageElement;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static TypeMirror component(TypeMirror mirror) {
+<span class="fc" id="L67">        return Objects.requireNonNull(componentOpt(mirror), &quot;TypeMirror has no component.&quot;);</span>
+    }
+
+    @Nullable
+    public static TypeMirror componentOpt(TypeMirror mirror) {
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        if (mirror instanceof DeclaredType declared) {</span>
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">            if (declared.getTypeArguments().size() == 1) {</span>
+<span class="fc" id="L74">                return declared.getTypeArguments().get(0);</span>
+            }
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        } else if (mirror instanceof ArrayType arrayType) {</span>
+<span class="fc" id="L77">            return arrayType.getComponentType();</span>
+        }
+<span class="nc" id="L79">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

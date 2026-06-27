@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MsgBuilderImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.msg</a> &gt; <span class="el_source">MsgBuilderImpl.java</span></div><h1>MsgBuilderImpl.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.msg;
+
+import org.jspecify.annotations.Nullable;
+
+import java.util.TreeSet;
+import java.util.function.Supplier;
+
+final class MsgBuilderImpl implements Msg.Builder {
+
+<span class="fc" id="L14">    private final TreeSet&lt;Msg.Message&gt; messages = new TreeSet&lt;&gt;();</span>
+
+<span class="fc" id="L16">    MsgBuilderImpl() {</span>
+<span class="fc" id="L17">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L21">        return build().toString();</span>
+    }
+
+    // interface Msg.Builder --------------------------------------------------
+
+    @Override
+    public boolean hasMessages() {
+<span class="fc bfc" id="L28" title="All 2 branches covered.">        return !messages.isEmpty();</span>
+    }
+
+    @Override
+    public boolean hasNoMessages() {
+<span class="fc" id="L33">        return messages.isEmpty();</span>
+    }
+
+    @Override
+    public String join(String sep) {
+<span class="fc" id="L38">        var sb = new StringBuilder();</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        for (Msg.Message message : messages) {</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">            if (!sb.isEmpty()) {</span>
+<span class="fc" id="L41">                sb.append(sep);</span>
+            }
+<span class="fc" id="L43">            sb.append(message.text());</span>
+<span class="fc" id="L44">        }</span>
+<span class="fc" id="L45">        return sb.toString();</span>
+    }
+
+    @Override
+    public void requireEmpty() {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (!messages.isEmpty()) {</span>
+<span class="fc" id="L51">            throw new IllegalStateException(&quot;List not empty: &quot; + join(&quot;, &quot;));</span>
+        }
+<span class="fc" id="L53">    }</span>
+
+    @Override
+    public Msg.Messages build() {
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        return messages.isEmpty() ? Msg.empty() : new MessagesImpl(messages);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.Result&lt;T&gt; build(T value) {
+<span class="fc" id="L62">        return build().build(value);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.Result&lt;T&gt; build(Supplier&lt;T&gt; func) {
+<span class="fc" id="L67">        return build().build(func);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.NullableResult&lt;T&gt; buildOpt(@Nullable T value) {
+<span class="fc" id="L72">        return build().buildOpt(value);</span>
+    }
+
+    @Override
+    public Msg.Builder add(Msg.Message msg) {
+<span class="fc" id="L77">        messages.add(msg);</span>
+<span class="fc" id="L78">        return this;</span>
+    }
+
+    @Override
+    public Msg.Builder add(boolean test, Msg.Message msg) {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        if (test) {</span>
+<span class="fc" id="L84">            messages.add(msg);</span>
+        }
+<span class="fc" id="L86">        return this;</span>
+    }
+
+    @Override
+    public Msg.Builder add(Supplier&lt;Boolean&gt; test, Msg.Message msg) {
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (test.get()) {</span>
+<span class="fc" id="L92">            messages.add(msg);</span>
+        }
+<span class="fc" id="L94">        return this;</span>
+    }
+
+    @Override
+    public Msg.Builder add(Msg.Messages msg) {
+<span class="fc bfc" id="L99" title="All 2 branches covered.">        for (var m : msg) {</span>
+<span class="fc" id="L100">            messages.add(m);</span>
+<span class="fc" id="L101">        }</span>
+<span class="fc" id="L102">        return this;</span>
+    }
+
+    @Override
+    public Msg.Builder add(Msg.@Nullable HasMessages value) {
+<span class="fc bfc" id="L107" title="All 4 branches covered.">        if (value != null &amp;&amp; value.hasMessages()) {</span>
+<span class="fc" id="L108">            add(value.messages());</span>
+        }
+<span class="fc" id="L110">        return this;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

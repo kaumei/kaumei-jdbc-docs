@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Jdbc2JavaConverter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.jdbc2java</a> &gt; <span class="el_source">Jdbc2JavaConverter.java</span></div><h1>Jdbc2JavaConverter.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.jdbc2java;
+
+import com.palantir.javapoet.CodeBlock;
+import io.kaumei.jdbc.anno.gen.TargetMethod;
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.model.SQLNameDV;
+import io.kaumei.jdbc.anno.store.Converter;
+import io.kaumei.jdbc.anno.store.ConverterBasis;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.store.SourceDV;
+
+import javax.lang.model.type.TypeMirror;
+import java.util.Map;
+
+public sealed class Jdbc2JavaConverter extends ConverterBasis
+        permits ConverterColumnNative, ConverterColumnObject, ConverterColumnResultSet, ConverterRowObjects, ConverterRowResultSet {
+
+    interface Placeholder extends Converter.Placeholder {
+        Jdbc2JavaConverter resolve(Map&lt;SearchKey, Jdbc2JavaConverter&gt; converter);
+    }
+
+    // ------------------------------------------------------------------------
+
+    protected Jdbc2JavaConverter(TypeMirror type, SourceDV source) {
+<span class="fc" id="L29">        super(type, source);</span>
+<span class="fc" id="L30">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public boolean isColumn() {
+<span class="nc" id="L35">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
+    }
+
+    public CodeBlock nullCheck(String varName) {
+<span class="nc" id="L39">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    // if isColumn == true
+    public void addColumnByIndex(TargetMethod builder, String localVarName, ColumnIndex indexVarName, OptionalFlag optional) {
+<span class="nc" id="L46">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
+    }
+
+    public void addColumnByName(TargetMethod builder, String localVarName, SQLNameDV columnName, OptionalFlag optional) {
+<span class="nc" id="L50">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    // if isColumn == false
+    public void addResultSetToRow(TargetMethod builder, String localVarName, OptionalFlag optional) {
+<span class="nc" id="L57">        throw new UnsupportedOperationException(); // sanity-check</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

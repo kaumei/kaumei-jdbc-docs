@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConverterEnum.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.java2jdbc</a> &gt; <span class="el_source">ConverterEnum.java</span></div><h1>ConverterEnum.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.java2jdbc;
+
+import com.palantir.javapoet.CodeBlock;
+import io.kaumei.jdbc.anno.gen.KaumeiLib;
+import io.kaumei.jdbc.anno.gen.TargetMethod;
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.store.SourceDV;
+
+import javax.lang.model.type.TypeMirror;
+
+final class ConverterEnum extends Java2JdbcConverter {
+
+<span class="fc" id="L18">    record Placeholder(TypeMirror type, SourceDV source,</span>
+                       SearchKey other) implements Java2JdbcConverter.Placeholder {
+        @Override
+        public SearchKey otherPlaceholder() {
+<span class="fc" id="L22">            return other;</span>
+        }
+
+        @Override
+        public Java2JdbcConverter resolve(Java2JdbcConverter converter) {
+<span class="fc" id="L27">            return new ConverterEnum(this, converter);</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final Java2JdbcConverter converter;
+
+    private ConverterEnum(Placeholder placeholder, Java2JdbcConverter converter) {
+<span class="fc" id="L36">        super(placeholder.type, placeholder.source);</span>
+<span class="fc" id="L37">        this.converter = converter;</span>
+<span class="fc" id="L38">    }</span>
+
+    @Override
+    public void setParameter(TargetMethod builder, CodeBlock paramAccess, CodeBlock columnIndex, OptionalFlag optional) {
+<span class="fc" id="L42">        builder.addComment(&quot;ConverterEnum&quot;, &quot;id&quot;, this.type(), &quot;optional&quot;, optional);</span>
+<span class="fc" id="L43">        var localName = builder.tempVarName(paramAccess);</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (optional.isNonNull()) {</span>
+<span class="fc" id="L45">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
+<span class="fc" id="L46">            builder.addStatement(KaumeiLib.throwNullPointerException(paramAccess));</span>
+<span class="fc" id="L47">            builder.endControlFlow();</span>
+<span class="fc" id="L48">            builder.addStatement(&quot;var $L = $L.name()&quot;, localName, paramAccess);</span>
+<span class="fc" id="L49">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+        } else {
+<span class="fc" id="L51">            builder.addStatement(&quot;var $L = $L == null ? null : $L.name()&quot;, localName, paramAccess, paramAccess);</span>
+<span class="fc" id="L52">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+        }
+<span class="fc" id="L54">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

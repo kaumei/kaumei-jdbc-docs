@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Context.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.ctx</a> &gt; <span class="el_source">Context.java</span></div><h1>Context.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.ctx;
+
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.util.Trees;
+import io.kaumei.jdbc.anno.ProcessorException;
+import io.kaumei.jdbc.anno.gen.GenerateService;
+import io.kaumei.jdbc.anno.java2jdbc.Java2JdbcService;
+import io.kaumei.jdbc.anno.jdbc2java.Jdbc2JavaService;
+import io.kaumei.jdbc.anno.model.*;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.annotation.*;
+import io.kaumei.jdbc.annotation.config.JdbcConfig;
+import io.kaumei.jdbc.annotation.config.JdbcLogLevel;
+import org.jspecify.annotations.Nullable;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.*;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
+import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.function.BiFunction;
+import java.util.stream.Stream;
+
+import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.component;
+import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.componentOpt;
+import static io.kaumei.jdbc.anno.model.OptionalFlag.OPTIONAL_TYPE;
+import static java.util.Objects.requireNonNull;
+
+public class Context {
+
+<span class="fc" id="L44">    public static final TypeMirror[] EMPTY_TYPE_MIRROR_ARRAY = new TypeMirror[0];</span>
+
+    public final JavaType JAVA_Boolean;
+    public final JavaType JAVA_Byte;
+    public final JavaType JAVA_Character;
+    public final JavaType JAVA_Double;
+    public final JavaType JAVA_Float;
+    public final JavaType JAVA_Integer;
+    public final JavaType JAVA_List;
+    public final JavaType JAVA_Long;
+    public final JavaType JAVA_Optional;
+    public final JavaType JAVA_RuntimeException;
+    public final JavaType JAVA_SQL_Connection;
+    public final JavaType JAVA_SQL_PreparedStatement;
+    public final JavaType JAVA_SQL_ResultSet;
+    public final JavaType JAVA_SQL_SQLException;
+    public final JavaType JAVA_Short;
+    public final JavaType JAVA_Stream;
+    public final JavaType JAVA_String;
+    public final JavaType JAVA_Void;
+
+    public final JavaAnnoType&lt;ConverterNameDV&gt; JAVA_TO_JDBC;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcBatchUpdateRecord&gt; JDBC_BATCH_UPDATE;
+    public final JavaAnnoType&lt;ConverterNameDV&gt; JDBC_CONVERTER_NAME;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcGenerationRecord&gt; JDBC_GENERATION;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcDebugRecord&gt; JDBC_DEBUG;
+    public final JavaAnnoType&lt;SQLNameDV&gt; JDBC_NAME;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcNativeRecord&gt; JDBC_NATIVE;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcSelectRecord&gt; JDBC_SELECT;
+    public final JavaAnnoType&lt;ConverterNameDV&gt; JDBC_TO_JAVA;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcUpdateRecord&gt; JDBC_UPDATE;
+
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcConfigRecord&gt; JDBC_CONFIG_PROPS;
+    public final JavaAnnoType&lt;JavaAnnoType.JdbcLogLevelRecord&gt; JDBC_LOG_LEVEL;
+
+    public final Map&lt;Name, JavaAnnoType&lt;?&gt;&gt; KAUMEI_ANNO;
+
+    public final JavaType KAUMEI_JDBC_JdbcBatch;
+    public final JavaType KAUMEI_JDBC_JdbcIterable;
+    public final JavaType KAUMEI_JDBC_JdbcResultSet;
+    public final JavaType KAUMEI_JDBC_JdbcRow;
+
+    // ----- service
+    public final Types types;
+    public final Elements elements;
+    public final @Nullable Trees trees;
+    public final JavaMessenger logger;
+    public final JavaFiler filer;
+    public final ConfigService kaumeiConfig;
+    public final SourceMethodService sourceMethodService;
+    public final Jdbc2JavaService kaumeiJdbc2Java;
+    public final Java2JdbcService kaumeiJava2Jdbc;
+    public final GenerateService kaumeiJdbcGenerator;
+
+    // ------------------------------------------------------------------------
+
+    private final BiFunction&lt;Element, TypeMirror, OptionalFlag&gt; jspecifyCheck;
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L104">    public Context(ProcessingEnvironment env) {</span>
+<span class="fc" id="L105">        this.types = requireNonNull(env.getTypeUtils());</span>
+<span class="fc" id="L106">        this.elements = requireNonNull(env.getElementUtils());</span>
+<span class="fc" id="L107">        this.trees = treesInstance(env);</span>
+<span class="fc" id="L108">        this.logger = new JavaMessenger(this, env);</span>
+<span class="fc" id="L109">        this.filer = new JavaFiler(this, env.getFiler());</span>
+<span class="fc" id="L110">        this.kaumeiConfig = new ConfigService(this, env.getOptions());</span>
+<span class="fc" id="L111">        this.sourceMethodService = new SourceMethodService(this);</span>
+<span class="fc" id="L112">        this.kaumeiJdbc2Java = new Jdbc2JavaService(this);</span>
+<span class="fc" id="L113">        this.kaumeiJava2Jdbc = new Java2JdbcService(this);</span>
+<span class="fc" id="L114">        this.kaumeiJdbcGenerator = new GenerateService(this);</span>
+
+<span class="fc" id="L116">        JAVA_Boolean = javaType(Boolean.class);</span>
+<span class="fc" id="L117">        JAVA_Byte = javaType(Byte.class);</span>
+<span class="fc" id="L118">        JAVA_Character = javaType(Character.class);</span>
+<span class="fc" id="L119">        JAVA_Double = javaType(Double.class);</span>
+<span class="fc" id="L120">        JAVA_Float = javaType(Float.class);</span>
+<span class="fc" id="L121">        JAVA_Integer = javaType(Integer.class);</span>
+<span class="fc" id="L122">        JAVA_List = javaType(List.class);</span>
+<span class="fc" id="L123">        JAVA_Long = javaType(Long.class);</span>
+<span class="fc" id="L124">        JAVA_Optional = javaType(Optional.class);</span>
+<span class="fc" id="L125">        JAVA_RuntimeException = javaType(RuntimeException.class);</span>
+<span class="fc" id="L126">        JAVA_SQL_Connection = javaType(Connection.class);</span>
+<span class="fc" id="L127">        JAVA_SQL_PreparedStatement = javaType(PreparedStatement.class);</span>
+<span class="fc" id="L128">        JAVA_SQL_ResultSet = javaType(java.sql.ResultSet.class);</span>
+<span class="fc" id="L129">        JAVA_SQL_SQLException = javaType(SQLException.class);</span>
+<span class="fc" id="L130">        JAVA_Short = javaType(Short.class);</span>
+<span class="fc" id="L131">        JAVA_Stream = javaType(Stream.class);</span>
+<span class="fc" id="L132">        JAVA_String = javaType(String.class);</span>
+<span class="fc" id="L133">        JAVA_Void = javaType(Void.class);</span>
+
+        // @formatter:off
+<span class="fc" id="L136">        JAVA_TO_JDBC        = new JavaAnnoType&lt;&gt;(this,JavaToJdbc.class,        ConverterNameDV.class,ConverterNameDV::of);</span>
+<span class="fc" id="L137">        JDBC_BATCH_UPDATE   = new JavaAnnoType&lt;&gt;(this,JdbcBatchUpdate.class,   JavaAnnoType.JdbcBatchUpdateRecord.class, JavaAnnoType.JdbcBatchUpdateRecord::of);</span>
+<span class="fc" id="L138">        JDBC_CONVERTER_NAME = new JavaAnnoType&lt;&gt;(this,JdbcConverterName.class, ConverterNameDV.class, ConverterNameDV::of);</span>
+<span class="fc" id="L139">        JDBC_GENERATION     = new JavaAnnoType&lt;&gt;(this,JdbcGeneration.class,    JavaAnnoType.JdbcGenerationRecord.class, JavaAnnoType.JdbcGenerationRecord::of);</span>
+<span class="fc" id="L140">        JDBC_DEBUG          = new JavaAnnoType&lt;&gt;(this,JdbcDebug.class,         JavaAnnoType.JdbcDebugRecord.class,JavaAnnoType.JdbcDebugRecord::of);</span>
+<span class="fc" id="L141">        JDBC_NAME           = new JavaAnnoType&lt;&gt;(this,JdbcName.class,          SQLNameDV.class, SQLNameDV::of);</span>
+<span class="fc" id="L142">        JDBC_NATIVE         = new JavaAnnoType&lt;&gt;(this,JdbcNative.class,        JavaAnnoType.JdbcNativeRecord.class, JavaAnnoType.JdbcNativeRecord::of);</span>
+<span class="fc" id="L143">        JDBC_SELECT         = new JavaAnnoType&lt;&gt;(this,JdbcSelect.class,        JavaAnnoType.JdbcSelectRecord.class, JavaAnnoType.JdbcSelectRecord::of);</span>
+<span class="fc" id="L144">        JDBC_TO_JAVA        = new JavaAnnoType&lt;&gt;(this,JdbcToJava.class,        ConverterNameDV.class, ConverterNameDV::of);</span>
+<span class="fc" id="L145">        JDBC_UPDATE         = new JavaAnnoType&lt;&gt;(this,JdbcUpdate.class,        JavaAnnoType.JdbcUpdateRecord.class, JavaAnnoType.JdbcUpdateRecord::of);</span>
+
+<span class="fc" id="L147">        JDBC_CONFIG_PROPS            = new JavaAnnoType&lt;&gt;(this,JdbcConfig.class,               JavaAnnoType.JdbcConfigRecord.class, JavaAnnoType.JdbcConfigRecord::of);</span>
+<span class="fc" id="L148">        JDBC_LOG_LEVEL               = new JavaAnnoType&lt;&gt;(this,JdbcLogLevel.class,             JavaAnnoType.JdbcLogLevelRecord.class, JavaAnnoType.JdbcLogLevelRecord::of);</span>
+        // @formatter:on
+
+<span class="fc" id="L151">        KAUMEI_ANNO = toMap(JAVA_TO_JDBC, JDBC_GENERATION, JDBC_CONVERTER_NAME,</span>
+                JDBC_NAME, JDBC_NATIVE, JDBC_SELECT, JDBC_TO_JAVA, JDBC_UPDATE, JDBC_BATCH_UPDATE,
+                //
+                JDBC_CONFIG_PROPS, JDBC_LOG_LEVEL,
+<span class="fc" id="L155">                this.kaumeiConfig.BATCH_SIZE.anno(), this.kaumeiConfig.FETCH_DIRECTION.anno(),</span>
+<span class="fc" id="L156">                this.kaumeiConfig.FETCH_SIZE.anno(), this.kaumeiConfig.MAX_ROWS.anno(),</span>
+<span class="fc" id="L157">                this.kaumeiConfig.NO_MORE_ROWS.anno(), this.kaumeiConfig.NO_ROWS.anno(),</span>
+<span class="fc" id="L158">                this.kaumeiConfig.QUERY_TIMEOUT.anno(),</span>
+<span class="fc" id="L159">                this.kaumeiConfig.RESULT_SET_CONCURRENCY.anno(), this.kaumeiConfig.RESULT_SET_TYPE.anno()</span>
+        );
+
+<span class="fc" id="L162">        var JdbcBatch = javaTypeOpt(&quot;io.kaumei.jdbc.JdbcBatch&quot;);</span>
+<span class="fc" id="L163">        var JdbcIterable = javaTypeOpt(&quot;io.kaumei.jdbc.JdbcIterable&quot;);</span>
+<span class="fc" id="L164">        var JdbcResultSet = javaTypeOpt(&quot;io.kaumei.jdbc.JdbcResultSet&quot;);</span>
+<span class="fc" id="L165">        var JdbcRow = javaTypeOpt(&quot;io.kaumei.jdbc.JdbcRow&quot;);</span>
+<span class="pc bpc" id="L166" title="4 of 8 branches missed.">        if (JdbcBatch == null || JdbcIterable == null || JdbcResultSet == null || JdbcRow == null) {</span>
+<span class="nc" id="L167">            throw new IllegalStateException(&quot;&quot;&quot;</span>
+                    Could not find Kaumei-JDBC lib on the classpath.
+                    Add the following dependency io.kaumei.jdbc:jdbc-annotation and io.kaumei.jdbc:jdbc-core
+                    to your classpath or disable the io.kaumei.jdbc:jdbc-processor annotation processor.
+                    &quot;&quot;&quot;);
+        }
+<span class="fc" id="L173">        this.KAUMEI_JDBC_JdbcBatch = JdbcBatch;</span>
+<span class="fc" id="L174">        this.KAUMEI_JDBC_JdbcIterable = JdbcIterable;</span>
+<span class="fc" id="L175">        this.KAUMEI_JDBC_JdbcResultSet = JdbcResultSet;</span>
+<span class="fc" id="L176">        this.KAUMEI_JDBC_JdbcRow = JdbcRow;</span>
+
+<span class="fc" id="L178">        this.jspecifyCheck = new JspecifyChecker(this);</span>
+<span class="fc" id="L179">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    private static @Nullable Trees treesInstance(ProcessingEnvironment env) {
+        try {
+<span class="fc" id="L185">            return Trees.instance(env);</span>
+<span class="fc" id="L186">        } catch (Exception e) {</span>
+<span class="fc" id="L187">            return null;</span>
+        }
+    }
+
+    public @Nullable String sourcePosition(Element element) {
+<span class="fc bfc" id="L192" title="All 2 branches covered.">        if (this.trees != null) {</span>
+            try {
+<span class="fc" id="L194">                var path = this.trees.getPath(element);</span>
+<span class="fc" id="L195">                var sp = this.trees.getSourcePositions();</span>
+<span class="fc bfc" id="L196" title="All 2 branches covered.">                if (path != null) {</span>
+<span class="fc" id="L197">                    CompilationUnitTree cu = path.getCompilationUnit();</span>
+<span class="fc" id="L198">                    long pos = sp.getStartPosition(cu, path.getLeaf());</span>
+<span class="fc" id="L199">                    var filename = Paths.get(cu.getSourceFile().toUri().getPath()).getFileName();</span>
+<span class="fc" id="L200">                    return &quot;(&quot; + filename + ':' + cu.getLineMap().getLineNumber(pos) + ')';</span>
+                }
+<span class="nc" id="L202">            } catch (Exception e) {</span>
+                // fallback if something went wrong
+<span class="nc" id="L204">                return &quot;(unknown)&quot;;</span>
+<span class="fc" id="L205">            }</span>
+        }
+<span class="fc" id="L207">        return null;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private JavaType javaType(Class&lt;?&gt; cls) {
+<span class="fc" id="L213">        return new JavaType(this, elements.getTypeElement(cls.getCanonicalName()));</span>
+    }
+
+    private @Nullable JavaType javaTypeOpt(CharSequence fcq) {
+<span class="fc" id="L217">        var element = elements.getTypeElement(fcq);</span>
+<span class="pc bpc" id="L218" title="1 of 2 branches missed.">        if (element != null) {</span>
+<span class="fc" id="L219">            return new JavaType(this, element);</span>
+        }
+<span class="nc" id="L221">        return null;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public @Nullable TypeElement getTypeElementOpt(CharSequence name) {
+<span class="fc" id="L227">        return this.elements.getTypeElement(name);</span>
+    }
+
+    public boolean hasKaumeiPkg(Element e) {
+<span class="fc" id="L231">        var elemPkg = this.elements.getPackageOf(e);</span>
+<span class="fc bfc" id="L232" title="All 2 branches covered.">        return elemPkg.getQualifiedName().contentEquals(&quot;io.kaumei.jdbc.annotation&quot;)</span>
+<span class="fc bfc" id="L233" title="All 2 branches covered.">                || elemPkg.getQualifiedName().contentEquals(&quot;io.kaumei.jdbc.annotation.config&quot;);</span>
+    }
+
+    public PackageElement getPackageOf(Element e) {
+<span class="fc" id="L237">        return this.elements.getPackageOf(e);</span>
+    }
+
+    @SuppressWarnings(&quot;BooleanMethodIsAlwaysInverted&quot;)
+    public boolean hasValidSqlExceptions(ExecutableElement method) {
+<span class="fc bfc" id="L242" title="All 2 branches covered.">        for (TypeMirror methodThrows : method.getThrownTypes()) {</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">            if (!this.JAVA_SQL_SQLException.isSupertypeOf(methodThrows)</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">                    &amp;&amp; !this.JAVA_RuntimeException.isSupertypeOf(methodThrows)) {</span>
+<span class="fc" id="L245">                return false;</span>
+            }
+<span class="fc" id="L247">        }</span>
+<span class="fc" id="L248">        return true;</span>
+    }
+
+    public SQLNameDV jdbcName(Element elem) {
+<span class="fc" id="L252">        var name = this.JDBC_NAME.getAnnoOpt(elem);</span>
+<span class="fc bfc" id="L253" title="All 2 branches covered.">        if (name != null) {</span>
+<span class="fc" id="L254">            return name;</span>
+        }
+<span class="fc" id="L256">        return SQLNameDV.ofJavaIdentifier(elem.getSimpleName());</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L261">    private record CheckExceptionResult(boolean containsSqlException, Set&lt;TypeMirror&gt; notCovered) {</span>
+    }
+
+    private CheckExceptionResult checkExceptions(ExecutableElement source, ExecutableElement target) {
+<span class="fc" id="L265">        var containsSqlException = false;</span>
+<span class="fc" id="L266">        Set&lt;TypeMirror&gt; notCovered = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L267" title="All 2 branches covered.">        for (var targetExp : target.getThrownTypes()) {</span>
+<span class="fc bfc" id="L268" title="All 2 branches covered.">            if (this.JAVA_SQL_SQLException.isSupertypeOf(targetExp)) {</span>
+<span class="fc" id="L269">                containsSqlException = true;</span>
+<span class="fc bfc" id="L270" title="All 2 branches covered.">            } else if (this.JAVA_RuntimeException.isSupertypeOf(targetExp)) {</span>
+                // ok
+<span class="fc bfc" id="L272" title="All 2 branches covered.">            } else if (!this.isSubtype(targetExp, source.getThrownTypes())) {</span>
+<span class="fc" id="L273">                notCovered.add(targetExp);</span>
+            }
+<span class="fc" id="L275">        }</span>
+<span class="fc" id="L276">        return new CheckExceptionResult(containsSqlException, Collections.unmodifiableSet(notCovered));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * Can we call target with in source.
+     */
+    public Msg.Messages isCallable(ExecutableElement source, ExecutableElement target) {
+<span class="fc" id="L285">        var messages = Msg.builder();</span>
+
+<span class="fc bfc" id="L287" title="All 2 branches covered.">        if (source.getReturnType().getKind() == TypeKind.VOID) {</span>
+            // ok
+<span class="fc bfc" id="L289" title="All 2 branches covered.">        } else if (!this.types.isAssignable(target.getReturnType(), source.getReturnType())) {</span>
+<span class="fc" id="L290">            messages.add(JdbcMsg.returnTypeNotAssignable(target.getReturnType().toString(), source.getReturnType().toString()));</span>
+        } else {
+<span class="fc" id="L292">            var sourceFlag = this.optionalFlag(source, source.getReturnType());</span>
+<span class="fc" id="L293">            var targetFlag = this.optionalFlag(target, target.getReturnType());</span>
+<span class="fc bfc" id="L294" title="All 2 branches covered.">            if (!targetFlag.isAssignableTo(sourceFlag)) {</span>
+<span class="fc" id="L295">                messages.add(JdbcMsg.returnTypeNullnessMismatch(targetFlag, sourceFlag));</span>
+            }
+        }
+
+<span class="fc" id="L299">        var parameters1 = source.getParameters();</span>
+<span class="fc" id="L300">        var parameters2 = target.getParameters();</span>
+<span class="fc" id="L301">        var size1 = parameters1.size();</span>
+<span class="fc" id="L302">        var size2 = parameters2.size();</span>
+<span class="fc bfc" id="L303" title="All 2 branches covered.">        if (size1 + 1 != size2) {</span>
+<span class="fc" id="L304">            messages.add(JdbcMsg.javaMethodsHaveDifferentParameter());</span>
+        } else {
+<span class="fc bfc" id="L306" title="All 2 branches covered.">            if (!this.JAVA_SQL_Connection.isSameType(parameters2.get(0).asType())) {</span>
+<span class="fc" id="L307">                messages.add(JdbcMsg.firstParameterMustBeConnection());</span>
+            }
+<span class="fc bfc" id="L309" title="All 2 branches covered.">            for (int i = 0; i &lt; size1; i++) {</span>
+<span class="fc" id="L310">                var p1 = parameters1.get(i).asType();</span>
+<span class="fc" id="L311">                var p2 = parameters2.get(i + 1).asType();</span>
+<span class="fc" id="L312">                var sourceFlag = this.optionalFlag(source, p1);</span>
+<span class="fc" id="L313">                var targetFlag = this.optionalFlag(target, p2);</span>
+
+<span class="fc bfc" id="L315" title="All 2 branches covered.">                if (sourceFlag.isOptionalType()) {</span>
+<span class="fc" id="L316">                    messages.add(JdbcMsg.sourceParamOptionalTypeNotSupported(i));</span>
+<span class="fc bfc" id="L317" title="All 2 branches covered.">                } else if (targetFlag.isOptionalType()) {</span>
+<span class="fc" id="L318">                    messages.add(JdbcMsg.targetParamOptionalTypeNotSupported(i + 1));</span>
+<span class="fc bfc" id="L319" title="All 2 branches covered.">                } else if (!sourceFlag.isAssignableTo(targetFlag)) {</span>
+<span class="fc" id="L320">                    messages.add(JdbcMsg.paramNullnessMismatch(i, sourceFlag, targetFlag));</span>
+<span class="fc bfc" id="L321" title="All 2 branches covered.">                } else if (!this.types.isSameType(p1, p2)) {</span>
+<span class="fc" id="L322">                    messages.add(JdbcMsg.paramTypeMismatch(i, p1.toString(), p2.toString()));</span>
+                }
+            }
+        }
+<span class="fc" id="L326">        var checkResult = checkExceptions(source, target);</span>
+<span class="fc bfc" id="L327" title="All 2 branches covered.">        for (var exp : checkResult.notCovered()) {</span>
+<span class="fc" id="L328">            messages.add(JdbcMsg.exceptionNotCompatible(exp.toString()));</span>
+<span class="fc" id="L329">        }</span>
+<span class="fc" id="L330">        return messages.build();</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    /**
+     * Only Jspecify is supported and must be used
+     * @param context the element the type belongs to
+     * @param type the type to check
+     * @return result of the check, not null
+     */
+    public OptionalFlag optionalFlag(Element context, TypeMirror type) {
+<span class="fc bfc" id="L342" title="All 2 branches covered.">        if (type.getKind().isPrimitive()) {</span>
+<span class="fc" id="L343">            return OptionalFlag.NON_NULL;</span>
+<span class="fc bfc" id="L344" title="All 2 branches covered.">        } else if (this.JAVA_Optional.isSameType(type)) {</span>
+<span class="fc" id="L345">            return OPTIONAL_TYPE;</span>
+        }
+<span class="fc" id="L347">        return jspecifyCheck.apply(context, type);</span>
+    }
+
+    public OptionalFlag optionalFlag(VariableElement varElem) {
+<span class="nc" id="L351">        return optionalFlag(varElem.getEnclosingElement(), varElem.asType());</span>
+    }
+
+    public OptionalFlag optionalFlag(RecordComponentElement varElem) {
+<span class="fc" id="L355">        return optionalFlag(varElem.getEnclosingElement(), varElem.asType());</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public TypeMirror typeMirror(TypeKind kind) {
+<span class="fc" id="L361">        return this.types.getPrimitiveType(kind);</span>
+    }
+
+    public TypeMirror typeMirror(Class&lt;?&gt; cls) {
+<span class="fc" id="L365">        return this.elements.getTypeElement(cls.getCanonicalName()).asType();</span>
+    }
+
+    public ArrayType getArrayType(TypeMirror componentType) {
+<span class="fc" id="L369">        return this.types.getArrayType(componentType);</span>
+    }
+
+    /**
+     * Tests whether t1 is a subtype of one in list.
+     * Any type is considered to be a subtype of itself.
+     */
+    public boolean isSubtype(TypeMirror type, List&lt;? extends TypeMirror&gt; list) {
+<span class="fc bfc" id="L377" title="All 2 branches covered.">        for (TypeMirror methodThrows : list) {</span>
+<span class="fc bfc" id="L378" title="All 2 branches covered.">            if (this.types.isSubtype(type, methodThrows)) {</span>
+<span class="fc" id="L379">                return true;</span>
+            }
+<span class="fc" id="L381">        }</span>
+<span class="fc" id="L382">        return false;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public TypeMirror erasure(TypeMirror type) {
+<span class="fc" id="L388">        return this.types.erasure(type);</span>
+    }
+
+    public boolean isAssignable(TypeMirror t1, TypeMirror t2) {
+<span class="pc bpc" id="L392" title="2 of 4 branches missed.">        if (t1.getKind() == TypeKind.ERROR || t2.getKind() == TypeKind.ERROR) {</span>
+<span class="nc" id="L393">            return false;</span>
+        }
+<span class="fc" id="L395">        return this.types.isAssignable(t1, t2);</span>
+    }
+
+    /**
+     * Tests whether t1 is a subtype of t2. Any type is considered to be a subtype of itself.
+     */
+    public boolean isSubtype(TypeMirror t1, TypeMirror t2) {
+        // in same rare cases the annotation process is called with invalid TypeMirror
+<span class="pc bpc" id="L403" title="2 of 4 branches missed.">        if (t1.getKind() == TypeKind.ERROR || t2.getKind() == TypeKind.ERROR) {</span>
+<span class="nc" id="L404">            return false;</span>
+        }
+<span class="fc" id="L406">        return this.types.isSubtype(t1, t2);</span>
+    }
+
+    public boolean isSameType(TypeMirror t1, TypeMirror t2) {
+        // in same rare cases the annotation process is called with invalid TypeMirror
+<span class="pc bpc" id="L411" title="2 of 4 branches missed.">        if (t1.getKind() == TypeKind.ERROR || t2.getKind() == TypeKind.ERROR) {</span>
+<span class="nc" id="L412">            return false;</span>
+        }
+<span class="fc" id="L414">        return types.isSameType(t1, t2);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public @Nullable Element asElementOpt(TypeMirror tm) {
+<span class="fc" id="L420">        return this.types.asElement(tm);</span>
+    }
+
+    public Element asElement(TypeMirror tm) {
+<span class="fc" id="L424">        return requireNonNull(this.types.asElement(tm));</span>
+    }
+
+    public TypeElement asTypeElement(TypeMirror tm) {
+<span class="fc" id="L428">        var element = this.types.asElement(tm);</span>
+<span class="pc bpc" id="L429" title="1 of 2 branches missed.">        if (element instanceof TypeElement te) {</span>
+<span class="fc" id="L430">            return te;</span>
+        }
+<span class="nc" id="L432">        throw new IllegalArgumentException(&quot;Could not convert into type:&quot; + tm);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Nullable
+    public TypeOptional resolveComponentOpt(Element element, TypeMirror mirror) {
+<span class="fc" id="L439">        var cmp = componentOpt(mirror);</span>
+<span class="pc bpc" id="L440" title="1 of 2 branches missed.">        if (cmp == null) {</span>
+<span class="nc" id="L441">            return null;</span>
+        }
+<span class="fc" id="L443">        var optional = optionalFlag(element, cmp);</span>
+<span class="fc bfc" id="L444" title="All 2 branches covered.">        return optional.isOptionalType()</span>
+<span class="fc" id="L445">                ? new TypeOptional(component(cmp), optional)</span>
+<span class="fc" id="L446">                : new TypeOptional(cmp, optional);</span>
+    }
+
+    public TypeOptional resolveComponent(Element element, TypeMirror mirror) {
+<span class="fc" id="L450">        return Objects.requireNonNull(resolveComponentOpt(element, mirror), &quot;TypeMirror has no component.&quot;);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public JdbcTypeMirror&lt;ExecutableElement&gt; jdbcTypeMirror(ExecutableElement element) {
+<span class="fc" id="L456">        return JdbcTypeMirror.of(this, element);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public Map&lt;SearchKey, Integer&gt; collectTypeHierarchy2(TypeMirror type) {
+<span class="fc" id="L462">        var levels = new LinkedHashMap&lt;SearchKey, Integer&gt;();</span>
+<span class="fc" id="L463">        visitTypeHierarchy2(levels, type);</span>
+<span class="fc" id="L464">        return levels;</span>
+    }
+
+    private int visitTypeHierarchy2(Map&lt;SearchKey, Integer&gt; levels, TypeMirror current) {
+<span class="fc" id="L468">        var id = SearchKey.of( current);</span>
+<span class="fc" id="L469">        var level = levels.get(id);</span>
+<span class="fc bfc" id="L470" title="All 2 branches covered.">        if (level == null) {</span>
+<span class="fc" id="L471">            level = 0;</span>
+<span class="fc bfc" id="L472" title="All 2 branches covered.">            for (TypeMirror parent : this.types.directSupertypes(current)) {</span>
+<span class="fc" id="L473">                var parentLevel = visitTypeHierarchy2(levels, parent);</span>
+<span class="fc bfc" id="L474" title="All 2 branches covered.">                if (parentLevel &gt; level) {</span>
+<span class="fc" id="L475">                    level = parentLevel;</span>
+                }
+<span class="fc" id="L477">            }</span>
+<span class="fc" id="L478">            level++;</span>
+<span class="fc" id="L479">            levels.put(id, level);</span>
+        }
+<span class="fc" id="L481">        return level;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private static Map&lt;Name, JavaAnnoType&lt;?&gt;&gt; toMap(JavaAnnoType&lt;?&gt;... all) {
+<span class="fc" id="L487">        var map = new HashMap&lt;Name, JavaAnnoType&lt;?&gt;&gt;();</span>
+<span class="fc bfc" id="L488" title="All 2 branches covered.">        for (var a : all) {</span>
+<span class="pc bpc" id="L489" title="1 of 2 branches missed.">            if (map.put(a.typeElement().getQualifiedName(), a) != null) {</span>
+<span class="nc" id="L490">                throw new ProcessorException(&quot;Duplicate key: &quot; + a.typeElement());</span>
+            }
+        }
+<span class="fc" id="L493">        return map;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

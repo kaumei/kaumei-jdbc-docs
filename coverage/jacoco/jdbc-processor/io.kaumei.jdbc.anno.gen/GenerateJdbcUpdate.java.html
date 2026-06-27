@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>GenerateJdbcUpdate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.gen</a> &gt; <span class="el_source">GenerateJdbcUpdate.java</span></div><h1>GenerateJdbcUpdate.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.gen;
+
+import com.palantir.javapoet.MethodSpec;
+import io.kaumei.jdbc.JdbcException;
+import io.kaumei.jdbc.anno.ProcessorException;
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.jdbc2java.ColumnIndex;
+import io.kaumei.jdbc.anno.model.JdbcTypeKind;
+import io.kaumei.jdbc.anno.model.JdbcTypeMirror;
+import io.kaumei.jdbc.anno.model.SourceMethod;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.store.SourceDV;
+import io.kaumei.jdbc.annotation.JdbcUpdate;
+import io.kaumei.jdbc.annotation.config.JdbcNoMoreRows;
+import io.kaumei.jdbc.annotation.config.JdbcNoRows;
+
+import javax.lang.model.element.ExecutableElement;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+public class GenerateJdbcUpdate implements GenerateJdbc {
+    // ----- services
+    private final Context ctx;
+    // ----- state
+    private final SourceMethod sourceMethod;
+    private final TargetMethod targetMethod;
+    private final Msg.Builder messages;
+
+<span class="fc" id="L35">    GenerateJdbcUpdate(Context ctx, SourceMethod sourceMethod) {</span>
+<span class="fc" id="L36">        this.ctx = ctx;</span>
+<span class="fc" id="L37">        this.sourceMethod = sourceMethod;</span>
+<span class="fc" id="L38">        this.targetMethod = new TargetMethod(this.ctx, sourceMethod.method());</span>
+<span class="fc" id="L39">        this.messages = Msg.builder();</span>
+<span class="fc" id="L40">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public MethodSpec generateMethod() {
+<span class="fc" id="L45">        this.ctx.logger.debug(&quot;---- @JdbcUpdate ----&quot;,</span>
+                &quot;method&quot;, sourceMethod,
+<span class="fc" id="L47">                &quot;returnType&quot;, sourceMethod.method().getReturnType());</span>
+
+<span class="fc" id="L49">        var returnType = sourceMethod.returnType();</span>
+
+<span class="fc" id="L51">        var gen = sourceMethod.jdbcReturnGeneratedValues();</span>
+<span class="fc bfc" id="L52" title="All 4 branches covered.">        if (gen == JdbcUpdate.GeneratedValues.GENERATED_KEYS || gen == JdbcUpdate.GeneratedValues.EXECUTE_QUERY) {</span>
+<span class="fc" id="L53">            updateReturning(returnType, gen);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        } else if (returnType.kind() == JdbcTypeKind.VOID</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">                || returnType.kind() == JdbcTypeKind.INT</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">                || returnType.kind() == JdbcTypeKind.BOOLEAN) {</span>
+<span class="fc" id="L57">            updateSimple();</span>
+        } else {
+<span class="fc" id="L59">            this.messages.add(JdbcMsg.jdbcUpdateRequiresSupportedReturnType(returnType));</span>
+        }
+
+<span class="fc" id="L62">        this.messages.add(sourceMethod.unusedAnno());</span>
+<span class="fc" id="L63">        return this.targetMethod.build(this.messages.build(), &quot;@JdbcUpdate method invalid&quot;);</span>
+    }
+
+    private void updateSimple() {
+<span class="fc" id="L67">        this.ctx.logger.debug(&quot;updateSimple&quot;);</span>
+
+<span class="fc" id="L69">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L70">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L71">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="fc" id="L72">        targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
+<span class="fc" id="L73">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L74">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+        // ----
+<span class="pc bpc" id="L76" title="1 of 4 branches missed.">        switch (sourceMethod.method().getReturnType().getKind()) { // JaCoCo:ignore</span>
+<span class="fc" id="L77">            case VOID -&gt; targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L78">            case INT -&gt; targetMethod.addStatement(&quot;return stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L79">            case BOOLEAN -&gt; targetMethod.addStatement(&quot;return stmt.executeUpdate() != 0&quot;);</span>
+            default -&gt;
+<span class="nc" id="L81">                    throw new IllegalStateException(&quot;Unexpected return type: &quot; + sourceMethod.method().getReturnType().getKind()); // sanity-check</span>
+        }
+        // ----
+<span class="fc" id="L84">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L85">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L86">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L87">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L88">    }</span>
+
+    private void updateReturning(JdbcTypeMirror&lt;ExecutableElement&gt; resultType,
+                                 JdbcUpdate.GeneratedValues jdbcReturnGeneratedValues) {
+<span class="fc" id="L92">        this.ctx.logger.debug(&quot;updateReturning&quot;, &quot;resultType&quot;, resultType, &quot;jdbcReturnGeneratedValues&quot;, jdbcReturnGeneratedValues);</span>
+
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        switch (resultType.kind()) {</span>
+            case VOID,
+                 KAUMEI_JDBC_ITERABLE, KAUMEI_JDBC_RESULT_SET, KAUMEI_JDBC_BATCH,
+                 ARRAY, LIST, STREAM:
+<span class="fc" id="L98">                this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresSupportedReturnType(resultType));</span>
+<span class="fc" id="L99">                return;</span>
+        }
+
+<span class="fc" id="L102">        var request = SearchKey.of(resultType.type(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L103">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
+<span class="fc" id="L105">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
+<span class="fc" id="L106">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
+<span class="fc" id="L107">            return;</span>
+        }
+
+<span class="fc" id="L110">        var optReason = resultType.optional().checkNonNullOrUnspecified();</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (optReason != null) {</span>
+<span class="fc" id="L112">            this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresNonNullOrUnspecifiedReturnType(resultType.optional()));</span>
+<span class="fc" id="L113">            return;</span>
+        }
+
+<span class="fc" id="L116">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L117">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L118">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="pc bpc" id="L119" title="1 of 3 branches missed.">        switch (jdbcReturnGeneratedValues) { // JaCoCo:ignore</span>
+            case GENERATED_KEYS -&gt; {
+<span class="fc" id="L121">                targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql, $T.RETURN_GENERATED_KEYS))&quot;, Statement.class);</span>
+<span class="fc" id="L122">                this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L123">                targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L124">                targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L125">                targetMethod.beginControlFlow(&quot;try(var rs = stmt.getGeneratedKeys())&quot;);</span>
+<span class="fc" id="L126">            }</span>
+            case EXECUTE_QUERY -&gt; {
+<span class="fc" id="L128">                targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
+<span class="fc" id="L129">                this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L130">                targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L131">                targetMethod.beginControlFlow(&quot;try(var rs = stmt.executeQuery())&quot;);</span>
+<span class="fc" id="L132">            }</span>
+            default -&gt;
+<span class="nc" id="L134">                    throw new ProcessorException(&quot;Unexpected return type: &quot; + jdbcReturnGeneratedValues); // sanity-check</span>
+        }
+
+<span class="fc" id="L137">        var converter = searchResult.value();</span>
+<span class="fc" id="L138">        this.targetMethod.addCheckNoRows(JdbcNoRows.Kind.THROW_EXCEPTION, resultType.optional());</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (converter.isColumn()) {</span>
+<span class="fc" id="L140">            converter.addColumnByIndex(this.targetMethod, &quot;result&quot;, ColumnIndex.ofValue(1), resultType.optional());</span>
+        } else {
+<span class="fc" id="L142">            converter.addResultSetToRow(this.targetMethod, &quot;result&quot;, resultType.optional());</span>
+        }
+<span class="fc" id="L144">        this.targetMethod.addCheckNoMoreRows(JdbcNoMoreRows.Kind.THROW_EXCEPTION);</span>
+<span class="fc" id="L145">        this.targetMethod.addStatement(&quot;return result&quot;);</span>
+
+<span class="fc" id="L147">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L148">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L149">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L150">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L151">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L152">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SearchResult.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.store</a> &gt; <span class="el_source">SearchResult.java</span></div><h1>SearchResult.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.store;
+
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import org.jspecify.annotations.Nullable;
+
+import java.util.List;
+
+import static io.kaumei.jdbc.anno.utils.AnnoUtils.requireState;
+
+public class SearchResult&lt;T extends Converter&gt; {
+
+    public static &lt;T extends Converter&gt; SearchResult&lt;T&gt; cycle(StoreID storeId, List&lt;StoreID&gt; cycle) {
+<span class="nc" id="L18">        return new SearchResult&lt;&gt;(storeId, SearchState.DYNAMIC_CYCLE, JdbcMsg.cycle(cycle), null, null, null);</span>
+    }
+
+    public static &lt;T extends Converter&gt; SearchResult&lt;T&gt; notFound(StoreID storeId) {
+<span class="fc" id="L22">        return new SearchResult&lt;&gt;(storeId, SearchState.NOT_FOUND, JdbcMsg.NOT_FOUND, null, null, null);</span>
+    }
+
+    public static &lt;T extends Converter&gt; SearchResult&lt;T&gt; valid(StoreID storeId, SearchState state, Store&lt;T&gt; store, @Nullable T converter, Converter.@Nullable Placeholder placeholder) {
+<span class="pc bpc" id="L26" title="2 of 8 branches missed.">        if ((converter == null &amp;&amp; placeholder == null) || (converter != null &amp;&amp; placeholder != null)) { // sanity-check</span>
+<span class="nc" id="L27">            throw new IllegalArgumentException(&quot;converter=&quot; + converter + &quot;, placeholder=&quot; + placeholder); // sanity-check</span>
+        }
+<span class="fc" id="L29">        return new SearchResult&lt;&gt;(storeId, state, Msg.empty(), store, converter, placeholder);</span>
+    }
+
+    public static &lt;T extends Converter&gt; SearchResult&lt;T&gt; invalid(StoreID storeId, SearchState state, Store&lt;T&gt; store, Msg.Messages messages) {
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">        if (!messages.hasMessages()) { // sanity-check</span>
+<span class="nc" id="L34">            throw new IllegalArgumentException(&quot;Messages must not be empty&quot;); // sanity-check</span>
+        }
+<span class="fc" id="L36">        return new SearchResult&lt;&gt;(storeId, state, messages, store, null, null);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final StoreID storeId;
+    private final SearchState state;
+    private final Msg.Messages messages;
+    private final @Nullable Store&lt;T&gt; store;
+    private final @Nullable T converter;
+    private final Converter.@Nullable Placeholder placeholder;
+
+    SearchResult(StoreID storeId, SearchState state, Msg.Messages messages,
+                 @Nullable Store&lt;T&gt; store,
+<span class="fc" id="L50">                 @Nullable T converter, Converter.@Nullable Placeholder placeholder) {</span>
+<span class="fc" id="L51">        this.storeId = storeId;</span>
+<span class="fc" id="L52">        this.state = state;</span>
+<span class="fc" id="L53">        this.messages = messages;</span>
+<span class="fc" id="L54">        this.converter = converter;</span>
+<span class="fc" id="L55">        this.store = store;</span>
+<span class="fc" id="L56">        this.placeholder = placeholder;</span>
+<span class="fc" id="L57">    }</span>
+
+    public StoreID storeId() {
+<span class="fc" id="L60">        return this.storeId;</span>
+    }
+
+    public SearchState state() {
+<span class="fc" id="L64">        return this.state;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public boolean hasMessages() {
+<span class="fc" id="L70">        return this.messages.hasMessages();</span>
+    }
+
+    public Msg.Messages messages() {
+<span class="fc" id="L74">        return this.messages;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public boolean hasConverter() {
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        return this.converter != null;</span>
+    }
+
+    public T converter() {
+<span class="fc" id="L84">        return requireState(this.converter, this::toString);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public boolean hasStore() {
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        return this.store != null;</span>
+    }
+
+    public Store&lt;T&gt; store() {
+<span class="fc" id="L94">        return requireState(this.store, this::toString);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public boolean hasPlaceholder() {
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        return this.placeholder != null;</span>
+    }
+
+    public Converter.Placeholder placeholder() {
+<span class="fc" id="L104">        return requireState(this.placeholder, this::toString);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public String toString() {
+<span class="fc" id="L111">        return &quot;{storeId=&quot; + storeId + &quot;, state=&quot; + state</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">                + (messages.hasMessages() ? &quot;, messages=&quot; + messages : &quot;&quot;) //</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">                + (converter != null ? &quot;, converter=&quot; + converter : &quot;&quot;) //</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">                + (store != null ? &quot;, store=&quot; + store : &quot;&quot;) //</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">                + (placeholder != null ? &quot;, placeholder=&quot; + placeholder : &quot;&quot;) //</span>
+                + '}';
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

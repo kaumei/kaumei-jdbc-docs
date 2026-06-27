@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConverterRowResultSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.jdbc2java</a> &gt; <span class="el_source">ConverterRowResultSet.java</span></div><h1>ConverterRowResultSet.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.jdbc2java;
+
+import io.kaumei.jdbc.anno.gen.TargetMethod;
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.store.SourceDV;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
+import javax.lang.model.type.TypeMirror;
+import java.util.Optional;
+
+final class ConverterRowResultSet extends Jdbc2JavaConverter {
+
+    private final boolean isMethod;
+    private final Element typeElement;
+    private final Name methodName;
+
+    ConverterRowResultSet(TypeMirror type, SourceDV source, ExecutableElement method) {
+<span class="fc" id="L25">        super(type, source);</span>
+<span class="fc bfc" id="L26" title="All 2 branches covered.">        this.isMethod = method.getKind() == ElementKind.METHOD;</span>
+<span class="fc" id="L27">        this.typeElement = method.getEnclosingElement();</span>
+<span class="fc" id="L28">        this.methodName = method.getSimpleName();</span>
+<span class="fc" id="L29">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L33">        return &quot;ConverterRowResultSet{isMethod=&quot; + isMethod + &quot;, typeElement=&quot; + typeElement + &quot;, methodName=&quot; + methodName + '}';</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public boolean isColumn() {
+<span class="fc" id="L40">        return false;</span>
+    }
+
+    @Override
+    public void addResultSetToRow(TargetMethod builder, String localVarName, OptionalFlag optional) {
+<span class="fc" id="L45">        builder.addComment(&quot;ConverterRowResultSet.addResultSetToRow&quot;, &quot;type&quot;, type());</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        if (this.isMethod) {</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">            if (optional.isOptionalType()) {</span>
+<span class="fc" id="L48">                builder.addStatement(&quot;var $L = $T.of($T.$N(rs))&quot;,</span>
+                        localVarName, Optional.class, this.typeElement, this.methodName);
+            } else {
+<span class="fc" id="L51">                builder.addStatement(&quot;var $L = $T.$N(rs)&quot;,</span>
+                        localVarName, this.typeElement, this.methodName);
+            }
+        } else {
+<span class="fc bfc" id="L55" title="All 2 branches covered.">            if (optional.isOptionalType()) {</span>
+<span class="fc" id="L56">                builder.addStatement(&quot;var $L = $T.of(new $T(rs))&quot;,</span>
+                        localVarName, Optional.class, this.typeElement);
+            } else {
+<span class="fc" id="L59">                builder.addStatement(&quot;var $L = new $T(rs)&quot;, localVarName, this.typeElement);</span>
+            }
+        }
+<span class="fc" id="L62">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

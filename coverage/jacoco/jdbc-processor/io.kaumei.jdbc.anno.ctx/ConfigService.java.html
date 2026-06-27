@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConfigService.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.ctx</a> &gt; <span class="el_source">ConfigService.java</span></div><h1>ConfigService.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.ctx;
+
+import io.kaumei.jdbc.anno.Processor;
+import io.kaumei.jdbc.anno.ProcessorEnvironment;
+import io.kaumei.jdbc.anno.ProcessorException;
+import io.kaumei.jdbc.anno.ProcessorSteps;
+import io.kaumei.jdbc.anno.model.AnnoMap;
+import io.kaumei.jdbc.anno.model.JavaAnnoType;
+import io.kaumei.jdbc.anno.model.SourceMethod;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.annotation.JdbcUpdate;
+import io.kaumei.jdbc.annotation.config.*;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.*;
+import java.lang.annotation.Annotation;
+import java.nio.file.Path;
+import java.util.*;
+
+import static io.kaumei.jdbc.anno.Processor.OPTION_KEY_CONFIG;
+import static io.kaumei.jdbc.anno.Processor.OPTION_KEY_DEBUG_FOLDER;
+import static java.util.Objects.requireNonNull;
+
+public class ConfigService implements ProcessorSteps {
+
+    public final Option&lt;Integer&gt; BATCH_SIZE;
+    public final Option&lt;JdbcFetchDirection.Kind&gt; FETCH_DIRECTION;
+    public final Option&lt;Integer&gt; FETCH_SIZE;
+    public final Option&lt;Integer&gt; MAX_ROWS;
+    public final Option&lt;JdbcNoMoreRows.Kind&gt; NO_MORE_ROWS;
+    public final Option&lt;JdbcNoRows.Kind&gt; NO_ROWS;
+    public final Option&lt;Integer&gt; QUERY_TIMEOUT;
+    public final Option&lt;JdbcResultSetConcurrency.Kind&gt; RESULT_SET_CONCURRENCY;
+    public final Option&lt;JdbcResultSetType.Kind&gt; RESULT_SET_TYPE;
+    public final Option[] ALL_OPTIONS;
+
+    // ----- services
+    private final Context ctx;
+    private final JavaMessenger logger;
+
+    // ----- state
+    private final @Nullable String configKey;
+    private final @Nullable String debugFolder;
+<span class="fc" id="L48">    private JdbcUpdate.GeneratedValues jdbcReturnGeneratedValues = JdbcUpdate.GeneratedValues.GENERATED_KEYS;</span>
+<span class="fc" id="L49">    private String generatedClassSuffix = &quot;Jdbc&quot;;</span>
+<span class="fc" id="L50">    private int maxCollectionPlaceholders = 1_000;</span>
+<span class="fc" id="L51">    private int maxTotalPlaceholders = 2_000;</span>
+
+<span class="fc" id="L53">    private final Map&lt;Option&lt;?&gt;, Object&gt; option2default = new HashMap&lt;&gt;();</span>
+
+<span class="fc" id="L55">    private final Set&lt;ExecutableElement&gt; jdbcToJava = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L56">    private final Set&lt;ExecutableElement&gt; javaToJdbc = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L57">    private final Set&lt;Name&gt; parentCycleDetection = new LinkedHashSet&lt;&gt;();</span>
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L61">    public ConfigService(Context ctx, Map&lt;String, String&gt; options) {</span>
+<span class="fc" id="L62">        this.ctx = requireNonNull(ctx);</span>
+<span class="fc" id="L63">        this.logger = requireNonNull(ctx.logger);</span>
+<span class="fc" id="L64">        this.configKey = options.get(OPTION_KEY_CONFIG);</span>
+<span class="fc" id="L65">        this.debugFolder = options.get(OPTION_KEY_DEBUG_FOLDER);</span>
+
+<span class="fc" id="L67">        BATCH_SIZE = create(JdbcBatchSize.class, false, 1);</span>
+<span class="fc" id="L68">        FETCH_DIRECTION = create(JdbcFetchDirection.class, JdbcFetchDirection.Kind.class, JdbcFetchDirection.Kind.UNSPECIFIED);</span>
+<span class="fc" id="L69">        FETCH_SIZE = create(JdbcFetchSize.class, 0);</span>
+<span class="fc" id="L70">        MAX_ROWS = create(JdbcMaxRows.class, 0);</span>
+<span class="fc" id="L71">        NO_MORE_ROWS = create(JdbcNoMoreRows.class, JdbcNoMoreRows.Kind.class, JdbcNoMoreRows.Kind.UNSPECIFIED, false);</span>
+<span class="fc" id="L72">        NO_ROWS = create(JdbcNoRows.class, JdbcNoRows.Kind.class, JdbcNoRows.Kind.UNSPECIFIED, false);</span>
+<span class="fc" id="L73">        QUERY_TIMEOUT = create(JdbcQueryTimeout.class, 0);</span>
+<span class="fc" id="L74">        RESULT_SET_CONCURRENCY = create(JdbcResultSetConcurrency.class, JdbcResultSetConcurrency.Kind.class, JdbcResultSetConcurrency.Kind.UNSPECIFIED);</span>
+<span class="fc" id="L75">        RESULT_SET_TYPE = create(JdbcResultSetType.class, JdbcResultSetType.Kind.class, JdbcResultSetType.Kind.UNSPECIFIED);</span>
+
+<span class="fc" id="L77">        ALL_OPTIONS = new Option[]{BATCH_SIZE, FETCH_DIRECTION, FETCH_SIZE, MAX_ROWS, NO_MORE_ROWS, NO_ROWS, QUERY_TIMEOUT,</span>
+                RESULT_SET_CONCURRENCY, RESULT_SET_TYPE};
+<span class="fc" id="L79">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public void process(ProcessorEnvironment roundEnv) {
+<span class="fc" id="L85">        this.logger.info(&quot;Process Kaumei JDBC processor configuration.&quot;);</span>
+
+<span class="fc" id="L87">        checkJdbcConfigNotOnJdbcInterface(roundEnv);</span>
+
+<span class="fc" id="L89">        var configByAnno = configByAnno(roundEnv);</span>
+<span class="fc" id="L90">        var configByOptions = configByOption();</span>
+<span class="pc bpc" id="L91" title="1 of 6 branches missed.">        if (configByAnno != null &amp;&amp; configByOptions != null &amp;&amp; !configByAnno.equals(configByOptions)) {</span>
+<span class="nc" id="L92">            var msg = &quot;Given config by annotation and by processor option are not equal.&quot;;</span>
+<span class="nc" id="L93">            this.logger.error(configByAnno, msg);</span>
+<span class="nc" id="L94">            this.logger.error(configByOptions, msg);</span>
+        }
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        loadConfig(configByAnno != null ? configByAnno : configByOptions);</span>
+<span class="fc" id="L97">        this.logger.always(&quot;option2default:&quot;, option2default);</span>
+<span class="fc" id="L98">        this.logger.always(&quot;jdbcToJava....:&quot;, jdbcToJava);</span>
+<span class="fc" id="L99">        this.logger.always(&quot;javaToJdbc....:&quot;, javaToJdbc);</span>
+<span class="fc" id="L100">        parentCycleDetection.clear();</span>
+<span class="fc" id="L101">    }</span>
+
+    private void checkJdbcConfigNotOnJdbcInterface(ProcessorEnvironment roundEnv) {
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        for (var config : roundEnv.jdbcConfig()) {</span>
+<span class="pc bpc" id="L105" title="1 of 4 branches missed.">            if (config.getKind() == ElementKind.INTERFACE</span>
+<span class="fc" id="L106">                    &amp;&amp; config instanceof TypeElement te</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">                    &amp;&amp; roundEnv.jdbcInterfaces().contains(te)) {</span>
+<span class="fc" id="L108">                this.logger.error(config,</span>
+                        &quot;@JdbcConfig must not be used on an interface that declares @Jdbc methods.&quot;);
+            }
+<span class="fc" id="L111">        }</span>
+<span class="fc" id="L112">    }</span>
+
+    private void loadConfig(@Nullable TypeElement jdbcConfig) {
+        // ----- put the default values
+<span class="fc bfc" id="L116" title="All 2 branches covered.">        for (var option : ALL_OPTIONS) {</span>
+<span class="fc" id="L117">            option2default.put(option, option.defaultValue());</span>
+        }
+        // overwrite some defaults
+<span class="fc" id="L120">        option2default.put(BATCH_SIZE, 1000);</span>
+<span class="fc" id="L121">        option2default.put(NO_MORE_ROWS, JdbcNoMoreRows.Kind.THROW_EXCEPTION);</span>
+<span class="fc" id="L122">        option2default.put(NO_ROWS, JdbcNoRows.Kind.THROW_EXCEPTION);</span>
+
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        if (jdbcConfig == null) {</span>
+<span class="fc" id="L125">            this.logger.debug(&quot;No config found.&quot;);</span>
+<span class="fc" id="L126">            return;</span>
+        }
+<span class="fc" id="L128">        processConfig(jdbcConfig);</span>
+<span class="fc" id="L129">    }</span>
+
+    private void processConfig(TypeElement configType) {
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        if (!parentCycleDetection.add(configType.getQualifiedName())) {</span>
+<span class="fc" id="L133">            this.logger.warn(&quot;Encounter cycle in parent definition.&quot;, parentCycleDetection);</span>
+<span class="fc" id="L134">            return;</span>
+        }
+
+<span class="fc" id="L137">        var annoMap = AnnoMap.of(ctx, configType);</span>
+
+<span class="fc" id="L139">        var cfg = annoMap.getOpt(ctx.JDBC_CONFIG_PROPS);</span>
+<span class="fc bfc" id="L140" title="All 4 branches covered.">        if (cfg != null &amp;&amp; cfg.parent() != null) {</span>
+<span class="fc" id="L141">            var elem = ctx.asElement(cfg.parent());</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">            if (elem instanceof TypeElement te) {</span>
+<span class="fc" id="L143">                processConfig(te);</span>
+            } else {
+<span class="nc" id="L145">                this.logger.warn(&quot;Ignore parent.&quot;, elem);</span>
+            }
+        }
+<span class="fc" id="L148">        this.logger.debug(&quot;Process config:&quot;, configType);</span>
+
+        // ----- by default we search for converter in the config type
+<span class="fc" id="L151">        processConverter(configType);</span>
+        // ----- next we check all other referenced types
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        if (cfg != null) {</span>
+<span class="fc bfc" id="L154" title="All 3 branches covered.">            jdbcReturnGeneratedValues = switch (cfg.returnGeneratedValues()) {</span>
+<span class="fc" id="L155">                case GENERATED_KEYS -&gt; JdbcUpdate.GeneratedValues.GENERATED_KEYS;</span>
+<span class="fc" id="L156">                case EXECUTE_QUERY -&gt; JdbcUpdate.GeneratedValues.EXECUTE_QUERY;</span>
+<span class="fc" id="L157">                default -&gt; jdbcReturnGeneratedValues;</span>
+            };
+<span class="fc bfc" id="L159" title="All 2 branches covered.">            if (isValidGeneratedClassSuffix(cfg.generatedClassSuffix())) {</span>
+<span class="fc" id="L160">                generatedClassSuffix = cfg.generatedClassSuffix();</span>
+            } else {
+<span class="fc" id="L162">                logger.error(configType, &quot;@JdbcConfig.generatedClassSuffix must be a non-blank Java class name suffix.&quot;);</span>
+            }
+<span class="fc bfc" id="L164" title="All 2 branches covered.">            if (cfg.maxCollectionPlaceholders() &gt;= 1) {</span>
+<span class="fc" id="L165">                maxCollectionPlaceholders = cfg.maxCollectionPlaceholders();</span>
+            } else {
+<span class="fc" id="L167">                logger.error(configType, &quot;@JdbcConfig.maxCollectionPlaceholders must be &gt;= 1.&quot;);</span>
+            }
+<span class="fc bfc" id="L169" title="All 2 branches covered.">            if (cfg.maxTotalPlaceholders() &gt;= 1) {</span>
+<span class="fc" id="L170">                maxTotalPlaceholders = cfg.maxTotalPlaceholders();</span>
+            } else {
+<span class="fc" id="L172">                logger.error(configType, &quot;@JdbcConfig.maxTotalPlaceholders must be &gt;= 1.&quot;);</span>
+            }
+
+<span class="fc bfc" id="L175" title="All 2 branches covered.">            for (var converterType : cfg.converter()) {</span>
+<span class="fc" id="L176">                processConverter(ctx.asElement(converterType));</span>
+            }
+        }
+
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">        if (annoMap.getOpt(ctx.JDBC_LOG_LEVEL) != null) {</span>
+<span class="nc" id="L181">            logger.warn(&quot;Not supported by now. Use annotation option &quot; + Processor.OPTION_KEY_LOG_LEVEL);</span>
+        }
+<span class="fc bfc" id="L183" title="All 2 branches covered.">        for (var option : ALL_OPTIONS) {</span>
+<span class="fc" id="L184">            var value = getOption(annoMap, option, configType);</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">            if (value != null) {</span>
+<span class="fc" id="L186">                option2default.put(option, value);</span>
+            }
+        }
+
+<span class="fc bfc" id="L190" title="All 2 branches covered.">        if (annoMap.hasUnused()) {</span>
+<span class="fc" id="L191">            throw new ProcessorException(JdbcMsg.unusedAnnotations(configType, annoMap.unused()).toString(), configType);</span>
+        }
+<span class="fc" id="L193">    }</span>
+
+    private void processConverter(Element element) {
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        if (element instanceof ExecutableElement executable) {</span>
+<span class="fc" id="L197">            var hasJdbcToJava = ctx.JDBC_TO_JAVA.hasAnno(executable);</span>
+<span class="fc" id="L198">            var hasJavaToJdbc = ctx.JAVA_TO_JDBC.hasAnno(executable);</span>
+<span class="pc bpc" id="L199" title="1 of 4 branches missed.">            if (hasJdbcToJava &amp;&amp; hasJavaToJdbc) {</span>
+<span class="nc" id="L200">                this.logger.error(executable, &quot;Could not have both annotations @JdbcToJava and @JavaToJdbc present at an element.&quot;);</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">            } else if (hasJdbcToJava) {</span>
+<span class="fc" id="L202">                jdbcToJava.add(executable);</span>
+<span class="fc bfc" id="L203" title="All 2 branches covered.">            } else if (hasJavaToJdbc) {</span>
+<span class="fc" id="L204">                javaToJdbc.add(executable);</span>
+            }
+<span class="fc bfc" id="L206" title="All 2 branches covered.">        } else if (element instanceof TypeElement type) {</span>
+<span class="fc bfc" id="L207" title="All 2 branches covered.">            for (var child : type.getEnclosedElements()) {</span>
+<span class="fc" id="L208">                processConverter(child);</span>
+<span class="fc" id="L209">            }</span>
+        } else {
+<span class="fc" id="L211">            logger.warn(element, &quot;Unsupported element type for annotations. Annotation is ignored.&quot;, &quot;kind&quot;, element.getKind());</span>
+        }
+<span class="fc" id="L213">    }</span>
+
+    /**
+     * Search for a @JdbcConfig annotated class. there must be none or exactly one.
+     * @return found type or null
+     */
+    private @Nullable TypeElement configByAnno(ProcessorEnvironment roundEnv) {
+<span class="fc bfc" id="L220" title="All 2 branches covered.">        if (roundEnv.jdbcConfig().size() == 1) {</span>
+<span class="fc" id="L221">            var jdbcConfig = roundEnv.jdbcConfig().iterator().next();</span>
+<span class="pc bpc" id="L222" title="1 of 2 branches missed.">            if (jdbcConfig instanceof TypeElement te) {</span>
+<span class="fc" id="L223">                return te;</span>
+            }
+<span class="nc" id="L225">            this.logger.error(jdbcConfig, &quot;Incompatible type for configuration.&quot;);</span>
+<span class="pc bfc" id="L226" title="All 2 branches covered.">        } else if (roundEnv.jdbcConfig().size() &gt; 1) {</span>
+<span class="fc" id="L227">            this.logger.error(&quot;To many configurations found.&quot;, &quot;configs&quot;, roundEnv.jdbcConfig());</span>
+        }
+<span class="fc" id="L229">        return null;</span>
+    }
+
+    /**
+     * Search for a @JdbcConfig defined class by processor options.
+     * @return found type or null
+     */
+    private @Nullable TypeElement configByOption() {
+<span class="fc bfc" id="L237" title="All 2 branches covered.">        if (configKey != null) {</span>
+<span class="fc" id="L238">            var jdbcConfig = this.ctx.getTypeElementOpt(configKey);</span>
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">            if (jdbcConfig == null) {</span>
+<span class="nc" id="L240">                this.logger.warn(&quot;Given config could not be found.&quot;, &quot;config&quot;, configKey);</span>
+<span class="fc bfc" id="L241" title="All 2 branches covered.">            } else if (!ctx.JDBC_CONFIG_PROPS.hasAnno(jdbcConfig)) {</span>
+<span class="fc" id="L242">                this.logger.warn(jdbcConfig, &quot;Given config is missing @JdbcConfig annotation.&quot;);</span>
+            } else {
+<span class="fc" id="L244">                return jdbcConfig;</span>
+            }
+        }
+<span class="fc" id="L247">        return null;</span>
+
+    }
+
+    // ------------------------------------------------------------------------
+
+    public boolean dump() {
+<span class="fc bfc" id="L254" title="All 2 branches covered.">        return debugFolder != null;</span>
+    }
+
+    public Path dumpFolder() {
+<span class="fc" id="L258">        return Path.of(requireNonNull(debugFolder));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+
+    public Set&lt;ExecutableElement&gt; jdbcToJava() {
+<span class="fc" id="L265">        return jdbcToJava;</span>
+    }
+
+    public Set&lt;ExecutableElement&gt; javaToJdbc() {
+<span class="fc" id="L269">        return javaToJdbc;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public JdbcUpdate.GeneratedValues jdbcReturnGeneratedValues() {
+<span class="fc" id="L275">        return this.jdbcReturnGeneratedValues;</span>
+    }
+
+    public String generatedClassSuffix() {
+<span class="fc" id="L279">        return generatedClassSuffix;</span>
+    }
+
+    public int maxCollectionPlaceholders() {
+<span class="fc" id="L283">        return maxCollectionPlaceholders;</span>
+    }
+
+    public int maxTotalPlaceholders() {
+<span class="fc" id="L287">        return maxTotalPlaceholders;</span>
+    }
+
+    private static boolean isValidGeneratedClassSuffix(String suffix) {
+<span class="fc bfc" id="L291" title="All 2 branches covered.">        if (suffix.isBlank()) {</span>
+<span class="fc" id="L292">            return false;</span>
+        }
+<span class="fc bfc" id="L294" title="All 2 branches covered.">        for (int i = 0; i &lt; suffix.length(); i++) {</span>
+<span class="fc bfc" id="L295" title="All 2 branches covered.">            if (!Character.isJavaIdentifierPart(suffix.charAt(i))) {</span>
+<span class="fc" id="L296">                return false;</span>
+            }
+        }
+<span class="fc" id="L299">        return true;</span>
+    }
+
+    @Nullable
+    public &lt;T&gt; OptionValue&lt;T&gt; search(Option&lt;T&gt; option, SourceMethod method) {
+<span class="fc" id="L304">        var name = method.parameter().paramNameFor(option);</span>
+<span class="fc bfc" id="L305" title="All 2 branches covered.">        if (name != null) {</span>
+<span class="fc" id="L306">            return new OptionValue.Dynamic&lt;&gt;(option, name);</span>
+        }
+<span class="fc" id="L308">        T value = this.searchOnMethod(option, method);</span>
+<span class="fc bfc" id="L309" title="All 2 branches covered.">        return option.isNotDefaultValue(value)</span>
+<span class="fc" id="L310">                ? new OptionValue.Static&lt;&gt;(option, value)</span>
+<span class="fc" id="L311">                : null;</span>
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public &lt;T&gt; T searchOnMethod(Option&lt;T&gt; option, SourceMethod method) {
+<span class="fc" id="L316">        var value = getOption(method.annoMap(), option, method.method());</span>
+<span class="fc bfc" id="L317" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L318">            return value;</span>
+        }
+<span class="fc" id="L320">        value = option.anno().getAnnoOpt(method.parent());</span>
+<span class="pc bpc" id="L321" title="3 of 6 branches missed.">        if (value != null &amp;&amp; (option.unsetAllowed() || option.isNotDefaultValue(value))) {</span>
+<span class="fc" id="L322">            validateStaticOptionValue(method.parent(), option, value);</span>
+<span class="fc" id="L323">            return value;</span>
+        }
+<span class="fc" id="L325">        return requireNonNull((T) option2default.get(option));</span>
+    }
+
+    private &lt;T&gt; @Nullable T getOption(AnnoMap annoMap, Option&lt;T&gt; option, Element element) {
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        var value = option.unsetAllowed()</span>
+<span class="fc" id="L330">                ? annoMap.getOpt(option)</span>
+<span class="fc" id="L331">                : annoMap.getIfNotDefault(option);</span>
+<span class="fc bfc" id="L332" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L333">            validateStaticOptionValue(element, option, value);</span>
+        }
+<span class="fc" id="L335">        return value;</span>
+    }
+
+    private &lt;T&gt; void validateStaticOptionValue(Element element, Option&lt;T&gt; option, T value) {
+<span class="fc bfc" id="L339" title="All 2 branches covered.">        if (option.isInvalidValue(value)) {</span>
+<span class="fc" id="L340">            logger.error(element, invalidValueMessage(option, value));</span>
+        }
+<span class="fc" id="L342">    }</span>
+
+    public static &lt;T&gt; String invalidValueMessage(Option&lt;T&gt; option, T value) {
+<span class="fc" id="L345">        return &quot;Invalid value for @&quot; + option.anno().typeElement().getSimpleName() + &quot;: &quot; + value;</span>
+    }
+
+    // ------------------------------------------------------------------------
+    // new code
+    // ------------------------------------------------------------------------
+
+    private Option&lt;Integer&gt; create(Class&lt;? extends Annotation&gt; anno, int minValue) {
+<span class="fc" id="L353">        return create(anno, true, minValue);</span>
+    }
+
+    private Option&lt;Integer&gt; create(Class&lt;? extends Annotation&gt; anno, boolean unsetAllowed, int minValue) {
+<span class="fc" id="L357">        var annoType = new JavaAnnoType&lt;&gt;(this.ctx, anno, Integer.class, map -&gt; map.getInteger(&quot;value&quot;, -1));</span>
+<span class="fc" id="L358">        return new Option&lt;&gt;(annoType, -1, unsetAllowed, minValue);</span>
+    }
+
+    private &lt;T extends Enum&lt;T&gt;&gt; Option&lt;T&gt; create(Class&lt;? extends Annotation&gt; anno, Class&lt;T&gt; cls, T defaultValue) {
+<span class="fc" id="L362">        return create(anno, cls, defaultValue, true);</span>
+    }
+
+    private &lt;T extends Enum&lt;T&gt;&gt; Option&lt;T&gt; create(Class&lt;? extends Annotation&gt; anno, Class&lt;T&gt; cls, T defaultValue, boolean unsetAllowed) {
+<span class="fc" id="L366">        var annoType = new JavaAnnoType&lt;&gt;(this.ctx, anno, cls, map -&gt; map.getEnum(&quot;value&quot;, cls, defaultValue));</span>
+<span class="fc" id="L367">        return new Option&lt;&gt;(annoType, defaultValue, unsetAllowed, null);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L372">    public record Option&lt;T&gt;(JavaAnnoType&lt;T&gt; anno, T defaultValue, boolean unsetAllowed, @Nullable Integer minValue) {</span>
+        public T cast(Object value) {
+<span class="fc" id="L374">            return anno.cast(value);</span>
+        }
+
+        public boolean isInvalidValue(Object value) {
+<span class="fc" id="L378">            return minValue != null</span>
+<span class="fc" id="L379">                    &amp;&amp; value instanceof Integer integer</span>
+<span class="fc bfc" id="L380" title="All 2 branches covered.">                    &amp;&amp; !defaultValue.equals(value)</span>
+<span class="pc bpc" id="L381" title="1 of 6 branches missed.">                    &amp;&amp; integer &lt; minValue;</span>
+        }
+
+        public boolean isDefaultValue(@Nullable Object value) {
+<span class="fc" id="L385">            return defaultValue.equals(value);</span>
+        }
+
+        public boolean isNotDefaultValue(@Nullable Object value) {
+<span class="fc bfc" id="L389" title="All 2 branches covered.">            return value != null</span>
+<span class="pc bpc" id="L390" title="1 of 2 branches missed.">                    &amp;&amp; defaultValue.getClass().equals(value.getClass())</span>
+<span class="fc bfc" id="L391" title="All 2 branches covered.">                    &amp;&amp; !defaultValue.equals(value);</span>
+        }
+
+    }
+
+    public sealed interface OptionValue&lt;T&gt; permits OptionValue.Static, OptionValue.Dynamic {
+        Option&lt;T&gt; option();
+
+<span class="fc" id="L399">        record Static&lt;T&gt;(Option&lt;T&gt; option, T value) implements OptionValue&lt;T&gt; {</span>
+        }
+
+<span class="fc" id="L402">        record Dynamic&lt;T&gt;(Option&lt;T&gt; option, String paramName) implements OptionValue&lt;T&gt; {</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>KaumeiLib.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.gen</a> &gt; <span class="el_source">KaumeiLib.java</span></div><h1>KaumeiLib.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.gen;
+
+import com.palantir.javapoet.CodeBlock;
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.impl.JdbcUtils;
+
+import javax.lang.model.type.TypeMirror;
+import java.util.Objects;
+
+public final class KaumeiLib {
+
+    private KaumeiLib() {
+        // prevent instantiation
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static CodeBlock requireNonNull(String javaName) {
+<span class="fc" id="L23">        return CodeBlock.of(&quot;$T.requireNonNull($L, $S)&quot;, Objects.class, javaName, javaName);</span>
+    }
+
+    public static CodeBlock requireNonNull(CodeBlock access) {
+<span class="fc" id="L27">        return CodeBlock.of(&quot;$T.requireNonNull($L, $S)&quot;, Objects.class, access, access.toString());</span>
+    }
+
+    public static CodeBlock nullCheck(OptionalFlag optionalFlag, TypeMirror type, CodeBlock access) {
+<span class="fc bfc" id="L31" title="All 4 branches covered.">        return optionalFlag.isNonNull() &amp;&amp; !type.getKind().isPrimitive()</span>
+<span class="fc" id="L32">                ? CodeBlock.of(&quot;$T.requireNonNull($L, $S)&quot;, Objects.class, access, access.toString())</span>
+<span class="fc" id="L33">                : CodeBlock.of(&quot;$L&quot;, access);</span>
+    }
+
+    public static CodeBlock throwNullPointerException(CodeBlock message) {
+<span class="fc" id="L37">        return CodeBlock.of(&quot;throw new $T($S)&quot;, NullPointerException.class, message.toString());</span>
+    }
+
+    public static CodeBlock marks(CodeBlock count, int maxPlaceholders, String parameterName) {
+<span class="fc" id="L41">        return CodeBlock.of(&quot;$T.marks($L, $L, $S)&quot;, JdbcUtils.class, count, maxPlaceholders, parameterName);</span>
+    }
+
+    public static CodeBlock checkPlaceholder(String count, CodeBlock add, int maxPlaceholders) {
+<span class="fc" id="L45">        return CodeBlock.of(&quot;$T.checkPlaceholder($L, $L, $L)&quot;, JdbcUtils.class, count, add, maxPlaceholders);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

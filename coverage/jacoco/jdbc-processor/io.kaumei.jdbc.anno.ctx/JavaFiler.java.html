@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JavaFiler.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.ctx</a> &gt; <span class="el_source">JavaFiler.java</span></div><h1>JavaFiler.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.ctx;
+
+import com.palantir.javapoet.JavaFile;
+import com.palantir.javapoet.TypeSpec;
+import io.kaumei.jdbc.anno.Processor;
+
+import javax.annotation.processing.Filer;
+import javax.lang.model.element.TypeElement;
+import java.io.IOException;
+
+import static java.util.Objects.requireNonNull;
+
+public final class JavaFiler {
+    // ----- service
+    private final JavaMessenger logger;
+    private final Filer filer;
+
+<span class="fc" id="L22">    public JavaFiler(Context ctx, Filer filer) {</span>
+<span class="fc" id="L23">        this.logger = requireNonNull(ctx.logger);</span>
+<span class="fc" id="L24">        this.filer = requireNonNull(filer);</span>
+<span class="fc" id="L25">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    public void writeJava(TypeElement elem, String packageName, TypeSpec typeSpec) {
+<span class="fc" id="L30">        JavaFile javaFile = JavaFile.builder(packageName, typeSpec)</span>
+<span class="fc" id="L31">                .addFileComment(Processor.FILE_COMMENT)</span>
+<span class="fc" id="L32">                .indent(&quot;    &quot;)</span>
+<span class="fc" id="L33">                .build();</span>
+        try {
+<span class="fc" id="L35">            javaFile.writeTo(this.filer);</span>
+<span class="nc" id="L36">        } catch (IOException e) { // sanity-check</span>
+<span class="nc" id="L37">            this.logger.error(elem, &quot;Failed to write generated file: &quot; + javaFile.toJavaFileObject().getName()); // sanity-check</span>
+<span class="fc" id="L38">        }</span>
+<span class="fc" id="L39">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

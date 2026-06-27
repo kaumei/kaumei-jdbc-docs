@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Java2JdbcResolver.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.model</a> &gt; <span class="el_source">Java2JdbcResolver.java</span></div><h1>Java2JdbcResolver.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.model;
+
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
+
+import static java.util.Objects.requireNonNull;
+
+<span class="fc" id="L21">record Java2JdbcResolver(Context ctx) {</span>
+
+<span class="fc" id="L23">    enum Kind {ARRAY, LIST, RECORD}</span>
+
+<span class="fc" id="L25">    record Single(OptionalFlag optional, SearchKey searchRequest) {</span>
+    }
+
+    Msg.Result&lt;Single&gt; single(VariableElement element) {
+<span class="fc" id="L29">        var optional = ctx.optionalFlag(element, element.asType());</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">        if (optional.isOptionalType()) {</span>
+<span class="fc" id="L31">            return Msg.result(JdbcMsg.OPTIONAL_TYPE_NOT_SUPPORTED);</span>
+        }
+<span class="fc" id="L33">        var converterName = ctx.JDBC_CONVERTER_NAME.getAnnoOpt(element);</span>
+<span class="fc bfc" id="L34" title="All 4 branches covered.">        if (converterName != null &amp;&amp; converterName.isBlankName()) {</span>
+<span class="fc" id="L35">            return Msg.result(JdbcMsg.annotationValueMustNotBeBlank(&quot;@JdbcConverterName&quot;));</span>
+        }
+<span class="fc" id="L37">        return Msg.result(new Java2JdbcResolver.Single(optional, SearchKey.of(ctx, element)));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    static final class Values {
+        private final Kind kind;
+        private final OptionalFlag optional;
+        private final @Nullable SearchKey searchRequest;
+        private final @Nullable OptionalFlag cmpOptional;
+
+        Values(Kind kind, OptionalFlag optional,
+               @Nullable SearchKey searchRequest,
+<span class="fc" id="L50">               @Nullable OptionalFlag cmpOptional) {</span>
+<span class="fc" id="L51">            this.kind = kind;</span>
+<span class="fc" id="L52">            this.optional = optional;</span>
+<span class="fc" id="L53">            this.searchRequest = searchRequest;</span>
+<span class="fc" id="L54">            this.cmpOptional = cmpOptional;</span>
+<span class="fc" id="L55">        }</span>
+
+        public Kind kind() {
+<span class="fc" id="L58">            return kind;</span>
+        }
+
+        public OptionalFlag optional() {
+<span class="fc" id="L62">            return optional;</span>
+        }
+
+        public SearchKey searchRequest() {
+<span class="fc" id="L66">            return requireNonNull(searchRequest);</span>
+        }
+
+        public OptionalFlag cmpOptional() {
+<span class="fc" id="L70">            return requireNonNull(cmpOptional);</span>
+        }
+    }
+
+    Msg.Result&lt;Values&gt; values(VariableElement element) {
+<span class="fc" id="L75">        var mirror = element.asType();</span>
+<span class="fc" id="L76">        var optional = ctx.optionalFlag(element, mirror);</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (optional.isOptionalType()) {</span>
+<span class="fc" id="L78">            return Msg.result(JdbcMsg.OPTIONAL_TYPE_NOT_SUPPORTED);</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        } else if (optional.isNullable()) {</span>
+<span class="fc" id="L80">            return Msg.result(JdbcMsg.NULLABLE_NOT_SUPPORTED);</span>
+        }
+
+<span class="fc" id="L83">        var converterName = ctx.JDBC_CONVERTER_NAME.getAnnoOpt(element);</span>
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">        if (converterName != null) {</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">            if (converterName.isBlankName()) {</span>
+<span class="nc" id="L86">                return Msg.result(JdbcMsg.annotationValueMustNotBeBlank(&quot;@JdbcConverterName&quot;));</span>
+            }
+<span class="nc" id="L88">            return Msg.result(JdbcMsg.JDBC_CONVERTER_NAME_NOT_SUPPORTED);</span>
+        }
+
+        Kind kind;
+        TypeMirror cmp;
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (mirror instanceof ArrayType arrayType) {</span>
+<span class="fc" id="L94">            kind = Kind.ARRAY;</span>
+<span class="fc" id="L95">            cmp = arrayType.getComponentType();</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        } else if (ctx.JAVA_List.isSameType(mirror)) {</span>
+<span class="fc" id="L97">            var declared = (DeclaredType) mirror;</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">            if (declared.getTypeArguments().size() != 1) {</span>
+<span class="fc" id="L99">                return Msg.result(JdbcMsg.JAVA_TO_JDBC_RESOLVER_LIST_REQUIRES_COMPONENT_TYPE);</span>
+            }
+<span class="fc" id="L101">            kind = Kind.LIST;</span>
+<span class="fc" id="L102">            cmp = declared.getTypeArguments().get(0);</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        } else if (mirror instanceof DeclaredType declared</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">                &amp;&amp; declared.asElement().getKind() == ElementKind.RECORD) {</span>
+<span class="fc" id="L105">            return Msg.result(new Java2JdbcResolver.Values(Kind.RECORD, optional, null, null));</span>
+        } else {
+<span class="fc" id="L107">            return Msg.result(JdbcMsg.JAVA_TO_JDBC_RESOLVER_VALUES_UNSUPPORTED_TYPES);</span>
+        }
+
+<span class="fc" id="L110">        var cmpOptional = ctx.optionalFlag(element, cmp);</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (cmpOptional.isOptionalType()) {</span>
+<span class="fc" id="L112">            return Msg.result(JdbcMsg.OPTIONAL_TYPE_NOT_SUPPORTED);</span>
+        }
+
+<span class="fc" id="L115">        return Msg.result(new Java2JdbcResolver.Values(kind, optional, SearchKey.of(cmp, ConverterNameDV.unnamed()),</span>
+                cmpOptional));
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

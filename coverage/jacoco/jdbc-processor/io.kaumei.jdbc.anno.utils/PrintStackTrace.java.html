@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>PrintStackTrace.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.utils</a> &gt; <span class="el_source">PrintStackTrace.java</span></div><h1>PrintStackTrace.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.utils;
+
+import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
+public final class PrintStackTrace {
+<span class="fc" id="L12">    private static final StackTraceElement[] EMPTY = new StackTraceElement[0];</span>
+
+    private PrintStackTrace() {
+    }
+
+    public static void appendStackTrace(StringBuilder sb, Throwable t) {
+<span class="nc" id="L18">        printThrowable(sb, t, &quot;&quot;, EMPTY, new IdentityHashMap&lt;&gt;());</span>
+<span class="nc" id="L19">    }</span>
+
+    public static String appendStackTrace(Throwable t) {
+<span class="fc" id="L22">        var sb = new StringBuilder();</span>
+<span class="fc" id="L23">        printThrowable(sb, t, &quot;&quot;, EMPTY, new IdentityHashMap&lt;&gt;());</span>
+<span class="fc" id="L24">        return sb.toString();</span>
+    }
+
+    private static void printThrowable(
+            StringBuilder sb,
+            Throwable t,
+            String prefix,
+            StackTraceElement[] parentTrace,
+            Map&lt;Throwable, Boolean&gt; seen) {
+        // using IdentityHashMap as a Set
+<span class="fc bfc" id="L34" title="All 2 branches covered.">        if (seen.put(t, Boolean.TRUE) != null) {</span>
+<span class="fc" id="L35">            sb.append(prefix).append(&quot;[CIRCULAR REFERENCE: &quot;).append(t).append(&quot;]\n&quot;);</span>
+<span class="fc" id="L36">            return;</span>
+        }
+
+<span class="fc" id="L39">        StackTraceElement[] trace = trimCallerSide(t.getStackTrace());</span>
+<span class="fc" id="L40">        int commonFrames = countCommonFrames(trace, parentTrace);</span>
+
+<span class="fc" id="L42">        sb.append(prefix).append(t).append(&quot;\n&quot;);</span>
+
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        for (int i = 0; i &lt; trace.length - commonFrames; i++) {</span>
+<span class="fc" id="L45">            sb.append(prefix).append(&quot;\tat &quot;).append(trace[i]).append(&quot;\n&quot;);</span>
+        }
+
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (commonFrames &gt; 0) {</span>
+<span class="fc" id="L49">            sb.append(prefix).append(&quot;\t... &quot;).append(commonFrames).append(&quot; more\n&quot;);</span>
+        }
+
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        for (Throwable suppressed : t.getSuppressed()) {</span>
+<span class="fc" id="L53">            sb.append(prefix).append(&quot;\tSuppressed: &quot;);</span>
+<span class="fc" id="L54">            printThrowable(sb, suppressed, prefix + &quot;\t&quot;, trace, seen);</span>
+        }
+
+<span class="fc" id="L57">        Throwable cause = t.getCause();</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (cause != null) {</span>
+<span class="fc" id="L59">            sb.append(prefix).append(&quot;Caused by: &quot;);</span>
+<span class="fc" id="L60">            printThrowable(sb, cause, prefix, trace, seen);</span>
+        }
+<span class="fc" id="L62">    }</span>
+
+    private static StackTraceElement[] trimCallerSide(StackTraceElement[] trace) {
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">        for (var i = trace.length - 1; i &gt;= 0; i--) {</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">            if (trace[i].getClassName().startsWith(&quot;io.kaumei&quot;)) {</span>
+<span class="fc" id="L67">                return Arrays.copyOfRange(trace, 0, i + 1);</span>
+            }
+        }
+<span class="nc" id="L70">        return trace;</span>
+    }
+
+    private static int countCommonFrames(StackTraceElement[] trace, StackTraceElement[] parentTrace) {
+<span class="fc" id="L74">        int i = trace.length - 1;</span>
+<span class="fc" id="L75">        int j = parentTrace.length - 1;</span>
+<span class="fc" id="L76">        int count = 0;</span>
+<span class="pc bpc" id="L77" title="1 of 6 branches missed.">        while (i &gt;= 0 &amp;&amp; j &gt;= 0 &amp;&amp; trace[i].equals(parentTrace[j])) {</span>
+<span class="fc" id="L78">            count++;</span>
+<span class="fc" id="L79">            i--;</span>
+<span class="fc" id="L80">            j--;</span>
+        }
+
+<span class="fc" id="L83">        return count;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

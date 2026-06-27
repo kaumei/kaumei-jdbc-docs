@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MessagesImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.msg</a> &gt; <span class="el_source">MessagesImpl.java</span></div><h1>MessagesImpl.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.msg;
+
+import org.jspecify.annotations.Nullable;
+
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.TreeSet;
+import java.util.function.Supplier;
+
+import static java.util.Objects.requireNonNull;
+
+final class MessagesImpl implements Msg.Messages {
+
+    private final Msg.Message[] messages;
+
+<span class="fc" id="L20">    MessagesImpl(TreeSet&lt;Msg.Message&gt; messages) {</span>
+<span class="fc bfc" id="L21" title="All 2 branches covered.">        if (messages.isEmpty()) {</span>
+<span class="fc" id="L22">            throw new IllegalArgumentException(&quot;messages must not be empty&quot;);</span>
+        }
+<span class="fc" id="L24">        this.messages = messages.toArray(new Msg.Message[0]);</span>
+<span class="fc" id="L25">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L29">        return '[' + join(&quot;, &quot;) + ']';</span>
+    }
+
+    // interface Iterable&lt;Msg.Message&gt; ----------------------------------------
+
+    @Override
+    public Iterator&lt;Msg.Message&gt; iterator() {
+<span class="fc" id="L36">        return new LocalIterator();</span>
+    }
+
+    // interface Msg.Messages -------------------------------------------------
+
+    @Override
+    public boolean hasMessages() {
+<span class="fc" id="L43">        return true;</span>
+    }
+
+    @Override
+    public boolean hasNoMessages() {
+<span class="fc" id="L48">        return false;</span>
+    }
+
+    @Override
+    public String join(String sep) {
+<span class="fc" id="L53">        var sb = new StringBuilder();</span>
+<span class="fc" id="L54">        sb.append(messages[0].text());</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        for (int i = 1; i &lt; messages.length; i++) {</span>
+<span class="fc" id="L56">            sb.append(sep);</span>
+<span class="fc" id="L57">            sb.append(messages[i].text());</span>
+        }
+<span class="fc" id="L59">        return sb.toString();</span>
+    }
+
+    @Override
+    public void join(StringBuilder sb, String sep) {
+<span class="fc" id="L64">        sb.append(messages[0].text());</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        for (int i = 1; i &lt; messages.length; i++) {</span>
+<span class="fc" id="L66">            sb.append(sep);</span>
+<span class="fc" id="L67">            sb.append(messages[i].text());</span>
+        }
+<span class="fc" id="L69">    }</span>
+
+    @Override
+    public void requireEmpty() {
+<span class="fc" id="L73">        throw new IllegalStateException(&quot;List not empty: &quot; + join(&quot;, &quot;));</span>
+    }
+
+    @Override
+    public Msg.Messages requireNoneEmpty() {
+<span class="fc" id="L78">        return this;</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.Result&lt;T&gt; build(T value) {
+<span class="fc" id="L83">        requireNonNull(value, &quot;value&quot;);</span>
+<span class="fc" id="L84">        return new MessageResultImpl&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.Result&lt;T&gt; build(Supplier&lt;T&gt; func) {
+<span class="fc" id="L89">        requireNonNull(func, &quot;func&quot;);</span>
+<span class="fc" id="L90">        return new MessageResultImpl&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Msg.NullableResult&lt;T&gt; buildOpt(@Nullable T value) {
+<span class="fc" id="L95">        return new MessageResultNullableImpl&lt;&gt;(this);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L100">    private final class LocalIterator implements Iterator&lt;Msg.Message&gt; {</span>
+<span class="fc" id="L101">        int index = 0;</span>
+
+        @Override
+        public boolean hasNext() {
+<span class="fc bfc" id="L105" title="All 2 branches covered.">            return index &lt; messages.length;</span>
+        }
+
+        @Override
+        public Msg.Message next() {
+<span class="fc bfc" id="L110" title="All 2 branches covered.">            if (this.index &gt;= messages.length) {</span>
+<span class="fc" id="L111">                throw new NoSuchElementException(this.index + &quot; &gt;= &quot; + messages.length);</span>
+            }
+<span class="fc" id="L113">            return messages[this.index++];</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

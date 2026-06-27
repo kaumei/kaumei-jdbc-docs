@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SourceDV.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.store</a> &gt; <span class="el_source">SourceDV.java</span></div><h1>SourceDV.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.store;
+
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.ctx.JavaModelToString;
+
+import javax.lang.model.element.*;
+
+import static io.kaumei.jdbc.anno.ctx.JavaModelToString.recordComponentElement;
+import static io.kaumei.jdbc.anno.ctx.JavaModelToString.typeElement;
+
+<span class="fc" id="L15">public record SourceDV(String value) {</span>
+
+    public static SourceDV empty() {
+<span class="fc" id="L18">        return new SourceDV(&quot;unknown&quot;);</span>
+    }
+
+    public static SourceDV generic(String value) {
+<span class="fc" id="L22">        return new SourceDV(value);</span>
+    }
+
+    public static SourceDV converter(Context ctx, Element element) {
+<span class="fc" id="L26">        var sb = new StringBuilder();</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">        if (element instanceof VariableElement va) {</span>
+<span class="fc" id="L28">            sb.append(JavaModelToString.variableElement(va));</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">        } else if (element instanceof ExecutableElement ee) {</span>
+<span class="fc" id="L30">            sb.append(JavaModelToString.executableElement(ee));</span>
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">        } else if (element instanceof TypeElement te) {</span>
+<span class="fc" id="L32">            sb.append(typeElement(te));</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        } else if (element instanceof RecordComponentElement rce) {</span>
+<span class="nc" id="L34">            sb.append(recordComponentElement(rce));</span>
+        } else {
+<span class="nc" id="L36">            throw new IllegalArgumentException(&quot;Unknown &quot; + element.getClass().getCanonicalName());</span>
+        }
+<span class="fc" id="L38">        var pos = ctx.sourcePosition(element);</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        if (pos != null) {</span>
+<span class="fc" id="L40">            sb.append(' ').append(pos);</span>
+        }
+<span class="fc" id="L42">        return new SourceDV(sb.toString());</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public String toString() {
+<span class="fc" id="L49">        return value;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConverterRowObjects.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.jdbc2java</a> &gt; <span class="el_source">ConverterRowObjects.java</span></div><h1>ConverterRowObjects.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.jdbc2java;
+
+import com.palantir.javapoet.CodeBlock;
+import io.kaumei.jdbc.anno.gen.TargetMethod;
+import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.model.SQLNameDV;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.store.SourceDV;
+import io.kaumei.jdbc.anno.store.StoreID;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
+import javax.lang.model.type.TypeMirror;
+import java.util.*;
+
+final class ConverterRowObjects extends Jdbc2JavaConverter {
+
+<span class="fc" id="L25">    record Placeholder(TypeMirror type, SourceDV source, ExecutableElement method,</span>
+                       OptionalFlag[] optionalFlags,
+                       SQLNameDV[] jdbcNames,
+                       @Nullable SearchKey[] others) implements Jdbc2JavaConverter.Placeholder {
+        @Override
+        public Jdbc2JavaConverter resolve(Map&lt;SearchKey, Jdbc2JavaConverter&gt; converter) {
+<span class="fc" id="L31">            var converters = new Jdbc2JavaConverter[others.length];</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">            for (int i = 0; i &lt; others.length; i++) {</span>
+<span class="fc" id="L33">                converters[i] = Objects.requireNonNull(converter.get(others[i]));</span>
+            }
+<span class="fc" id="L35">            return new ConverterRowObjects(this, converters);</span>
+        }
+
+        @Override
+        public Set&lt;SearchKey&gt; otherPlaceholders() {
+<span class="fc" id="L40">            var result = new HashSet&lt;SearchKey&gt;();</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">            for (var r : others) {</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">                if (r != null) {</span>
+<span class="fc" id="L43">                    result.add(r);</span>
+                }
+            }
+<span class="fc" id="L46">            return result;</span>
+        }
+
+        Set&lt;StoreID&gt; nonColumnConverters(Map&lt;SearchKey, Jdbc2JavaConverter&gt; converter) {
+<span class="fc" id="L50">            var result = new HashSet&lt;StoreID&gt;();</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">            for (var other : others) {</span>
+<span class="pc bpc" id="L52" title="2 of 4 branches missed.">                if (other != null &amp;&amp; !Objects.requireNonNull(converter.get(other)).isColumn()) {</span>
+<span class="nc" id="L53">                    result.add(other.toStoreId());</span>
+                }
+            }
+<span class="fc" id="L56">            return result;</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final boolean isMethod;
+    private final Element typeElement;
+    private final Name methodName;
+    private final int paramLength;
+    private final SQLNameDV[] jdbcNames;
+    private final Jdbc2JavaConverter[] converters;
+    private final String[] paramNames;
+    private final OptionalFlag[] optionalFlags;
+
+    private ConverterRowObjects(Placeholder placeholder,
+                                Jdbc2JavaConverter[] converters) {
+<span class="fc" id="L73">        super(placeholder.type, placeholder.source);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        this.isMethod = placeholder.method.getKind() == ElementKind.METHOD;</span>
+<span class="fc" id="L75">        this.typeElement = placeholder.method.getEnclosingElement();</span>
+<span class="fc" id="L76">        this.methodName = placeholder.method.getSimpleName();</span>
+
+<span class="fc" id="L78">        this.jdbcNames = placeholder.jdbcNames;</span>
+<span class="fc" id="L79">        this.converters = converters;</span>
+<span class="fc" id="L80">        this.optionalFlags = placeholder.optionalFlags;</span>
+<span class="fc" id="L81">        this.paramLength = placeholder.method.getParameters().size();</span>
+<span class="fc" id="L82">        this.paramNames = new String[paramLength];</span>
+
+<span class="fc bfc" id="L84" title="All 2 branches covered.">        for (int i = 0; i &lt; this.paramLength; i++) {</span>
+<span class="fc" id="L85">            this.paramNames[i] = placeholder.method.getParameters().get(i).getSimpleName().toString();</span>
+        }
+<span class="fc" id="L87">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public boolean isColumn() {
+<span class="fc" id="L93">        return false;</span>
+    }
+
+    @Override
+    public void addResultSetToRow(TargetMethod builder, String localVarName, OptionalFlag optional) {
+<span class="fc" id="L98">        builder.addComment(&quot;ConverterRowObjects.addResultSetToRow&quot;, &quot;type&quot;, type());</span>
+<span class="fc" id="L99">        CodeBlock.Builder args = CodeBlock.builder();</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        for (int i = 0; i &lt; paramLength; i++) {</span>
+<span class="fc" id="L101">            var tempVarName = builder.tempVarName(paramNames[i]);</span>
+<span class="fc" id="L102">            converters[i].addColumnByName(builder, tempVarName, this.jdbcNames[i], this.optionalFlags[i]);</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">            if (i == 0) {</span>
+<span class="fc" id="L104">                args.add(&quot;$L&quot;, tempVarName);</span>
+            } else {
+<span class="fc" id="L106">                args.add(&quot;, $L&quot;, tempVarName);</span>
+            }
+        }
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (isMethod) {</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">            if (optional.isOptionalType()) {</span>
+<span class="fc" id="L111">                builder.addStatement(&quot;var $L = $T.of($T.$N($L))&quot;,</span>
+<span class="fc" id="L112">                        localVarName, Optional.class, this.typeElement, this.methodName, args.build());</span>
+            } else {
+<span class="fc" id="L114">                builder.addStatement(&quot;var $L = $T.$N($L)&quot;,</span>
+<span class="fc" id="L115">                        localVarName, this.typeElement, this.methodName, args.build());</span>
+            }
+        } else {
+<span class="fc bfc" id="L118" title="All 2 branches covered.">            if (optional.isOptionalType()) {</span>
+<span class="fc" id="L119">                builder.addStatement(&quot;var $L = $T.of(new $T($L))&quot;,</span>
+<span class="fc" id="L120">                        localVarName, Optional.class, this.typeElement, args.build());</span>
+            } else {
+<span class="fc" id="L122">                builder.addStatement(&quot;var $L = new $T($L)&quot;,</span>
+<span class="fc" id="L123">                        localVarName, this.typeElement, args.build());</span>
+            }
+        }
+<span class="fc" id="L126">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

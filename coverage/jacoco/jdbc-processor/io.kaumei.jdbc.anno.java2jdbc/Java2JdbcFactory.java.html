@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Java2JdbcFactory.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.java2jdbc</a> &gt; <span class="el_source">Java2JdbcFactory.java</span></div><h1>Java2JdbcFactory.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.java2jdbc;
+
+import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.model.ConverterNameDV;
+import io.kaumei.jdbc.anno.msg.JdbcMsg;
+import io.kaumei.jdbc.anno.msg.Msg;
+import io.kaumei.jdbc.anno.store.FactoryResult;
+import io.kaumei.jdbc.anno.store.SearchKey;
+import io.kaumei.jdbc.anno.store.SourceDV;
+import io.kaumei.jdbc.anno.store.StoreID;
+import org.jspecify.annotations.Nullable;
+
+import javax.lang.model.element.*;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import java.util.List;
+
+import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.isStatic;
+import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.isVisible;
+import static javax.lang.model.element.ElementKind.RECORD;
+
+class Java2JdbcFactory {
+
+<span class="fc" id="L28">    private static final Msg.Message INVALID_STATIC_PARAMETER_COUNT =</span>
+            JdbcMsg.JAVA_TO_JDBC_METHOD_REQUIRES_ONE_OR_THREE_PARAMETERS;
+
+    private final Context ctx;
+
+<span class="fc" id="L33">    Java2JdbcFactory(Context ctx) {</span>
+<span class="fc" id="L34">        this.ctx = ctx;</span>
+<span class="fc" id="L35">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    FactoryResult&lt;Java2JdbcConverter&gt; converterEnum(Element elem) {
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        if (elem.getKind() != ElementKind.ENUM) { // sanity-check</span>
+<span class="fc" id="L41">            throw new IllegalArgumentException(&quot;Element must be a record.&quot;); // sanity-check</span>
+        }
+<span class="fc" id="L43">        var storeId = StoreID.of(elem.asType());</span>
+<span class="fc" id="L44">        var other = SearchKey.of(this.ctx.JAVA_String.typeMirror());</span>
+<span class="fc" id="L45">        var source = SourceDV.converter(ctx, elem);</span>
+<span class="fc" id="L46">        return FactoryResult.of(storeId, new ConverterEnum.Placeholder(elem.asType(), source, other));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private FactoryResult&lt;Java2JdbcConverter&gt; converterObjectSimple(ExecutableElement method) {
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        if (isStatic(method)) { // sanity-check</span>
+<span class="nc" id="L53">            throw new IllegalArgumentException(&quot;method must not be static&quot;); // sanity-check</span>
+        }
+
+<span class="fc" id="L56">        var type = method.getEnclosingElement().asType();</span>
+<span class="fc" id="L57">        var messages = Msg.builder();</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (!isVisible(method)) {</span>
+<span class="fc" id="L59">            messages.add(JdbcMsg.JAVA_TO_JDBC_METHOD_MUST_BE_VISIBLE);</span>
+        }
+
+        // ----- check return type
+<span class="fc" id="L63">        var returnType = method.getReturnType();</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (returnType.getKind() == TypeKind.VOID) {</span>
+<span class="fc" id="L65">            messages.add(JdbcMsg.INVALID_RETURN_TYPE);</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        } else if (!this.ctx.optionalFlag(method, returnType).isNonNullOrUnspecified()) {</span>
+<span class="fc" id="L67">            messages.add(JdbcMsg.JAVA_TO_JDBC_RETURN_TYPE_MUST_BE_NON_NULL_OR_UNSPECIFIED);</span>
+        }
+        // ----- check parameter
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if (!method.getParameters().isEmpty()) {</span>
+<span class="fc" id="L71">            messages.add(JdbcMsg.JAVA_TO_JDBC_METHOD_MUST_HAVE_NO_PARAMETERS);</span>
+        }
+        // ----- check throws
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        if (!this.ctx.hasValidSqlExceptions(method)) {</span>
+<span class="fc" id="L75">            messages.add(JdbcMsg.JAVA_TO_JDBC_HAS_INCOMPATIBLE_EXCEPTIONS);</span>
+        }
+<span class="fc" id="L77">        var name = ctx.JAVA_TO_JDBC.getAnno(method, ConverterNameDV.unnamed());</span>
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">        if (name.isBlankName()) {</span>
+<span class="nc" id="L79">            messages.add(JdbcMsg.annotationValueMustNotBeBlank(&quot;@JavaToJdbc&quot;));</span>
+        }
+<span class="fc" id="L81">        var storeId = StoreID.of(type, name);</span>
+<span class="fc" id="L82">        var source = SourceDV.converter(ctx, method);</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        return messages.hasMessages()</span>
+<span class="fc" id="L84">                ? FactoryResult.of(storeId, source, messages.build())</span>
+<span class="fc" id="L85">                : FactoryResult.of(storeId, new ConverterObjectSimple.Placeholder(type, source, method, SearchKey.of(returnType)));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    FactoryResult&lt;Java2JdbcConverter&gt; converterRecord(TypeElement elem) {
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        if (elem.getKind() != ElementKind.RECORD) { // sanity-check</span>
+<span class="nc" id="L92">            throw new IllegalArgumentException(&quot;Element must be a record.&quot;); // sanity-check</span>
+        }
+
+<span class="fc" id="L95">        var type = elem.asType();</span>
+<span class="fc" id="L96">        var storeId = StoreID.of(type);</span>
+<span class="fc" id="L97">        var source = SourceDV.converter(ctx, elem);</span>
+
+<span class="fc" id="L99">        List&lt;? extends RecordComponentElement&gt; components = elem.getRecordComponents();</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        if (components.size() != 1) {</span>
+<span class="fc" id="L101">            return FactoryResult.of(storeId, source, JdbcMsg.JAVA_TO_JDBC_RECORD_MUST_HAVE_ONE_COMPONENT);</span>
+        }
+
+<span class="fc" id="L104">        var component = components.get(0);</span>
+<span class="fc" id="L105">        var cType = component.asType();</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (!this.ctx.optionalFlag(elem, cType).isNonNullOrUnspecified()) {</span>
+<span class="fc" id="L107">            return FactoryResult.of(storeId, source, JdbcMsg.JAVA_TO_JDBC_RECORD_COMPONENT_MUST_BE_NON_NULL_OR_UNSPECIFIED);</span>
+        }
+<span class="fc" id="L109">        return FactoryResult.of(storeId, new ConverterRecord.Placeholder(type, source, component.getAccessor(), SearchKey.of(cType)));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Nullable
+    FactoryResult&lt;Java2JdbcConverter&gt; converterMethod(ExecutableElement elem) {
+<span class="fc bfc" id="L116" title="All 2 branches covered.">        if (isStatic(elem)) {</span>
+<span class="fc" id="L117">            return converterStatic(elem);</span>
+        } else {
+<span class="fc" id="L119">            return converterObjectSimple(elem);</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Nullable FactoryResult&lt;Java2JdbcConverter&gt; converterStatic(ExecutableElement method) {
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        if (!isStatic(method)) { // sanity-check</span>
+<span class="nc" id="L127">            throw new IllegalArgumentException(&quot;method must be static&quot;); // sanity-check</span>
+        }
+
+<span class="fc" id="L130">        var messages = Msg.builder();</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">        if (!isVisible(method)) {</span>
+<span class="fc" id="L132">            messages.add(JdbcMsg.JAVA_TO_JDBC_METHOD_MUST_BE_VISIBLE);</span>
+        }
+<span class="fc" id="L134">        var name = ctx.JAVA_TO_JDBC.getAnno(method, ConverterNameDV.unnamed());</span>
+<span class="pc bpc" id="L135" title="1 of 2 branches missed.">        if (name.isBlankName()) {</span>
+<span class="nc" id="L136">            messages.add(JdbcMsg.annotationValueMustNotBeBlank(&quot;@JavaToJdbc&quot;));</span>
+        }
+<span class="fc" id="L138">        var paramSize = method.getParameters().size();</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (paramSize == 1) {</span>
+<span class="fc" id="L140">            return converterStaticSimple(messages, method, name);</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        } else if (paramSize == 3) {</span>
+<span class="fc" id="L142">            return converterStaticStatement(messages, method, name);</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        } else if (name.hasName()) {</span>
+<span class="fc" id="L144">            var storeId = StoreID.of(ctx.JAVA_Void.typeMirror(), name);</span>
+<span class="fc" id="L145">            return FactoryResult.of(storeId, SourceDV.converter(ctx, method), JdbcMsg.JAVA_TO_JDBC_NO_TYPE);</span>
+        }
+<span class="fc" id="L147">        this.ctx.logger.warn(method, INVALID_STATIC_PARAMETER_COUNT.text());</span>
+<span class="fc" id="L148">        return null;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private FactoryResult&lt;Java2JdbcConverter&gt; converterStaticSimple(Msg.Builder messages,
+                                                                    ExecutableElement method,
+                                                                    ConverterNameDV name) {
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        if (method.getParameters().size() != 1) { // sanity-check</span>
+<span class="nc" id="L157">            throw new IllegalArgumentException(&quot;Invalid parameter count: &quot; + method.getParameters().size()); // sanity-check</span>
+        }
+
+        // ----- check return type
+<span class="fc" id="L161">        var returnType = method.getReturnType();</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        if (returnType.getKind() == TypeKind.VOID) {</span>
+<span class="fc" id="L163">            messages.add(JdbcMsg.INVALID_RETURN_TYPE);</span>
+<span class="fc bfc" id="L164" title="All 2 branches covered.">        } else if (!this.ctx.optionalFlag(method, returnType).isNonNullOrUnspecified()) {</span>
+<span class="fc" id="L165">            messages.add(JdbcMsg.JAVA_TO_JDBC_RETURN_TYPE_MUST_BE_NON_NULL_OR_UNSPECIFIED);</span>
+        }
+
+        // ----- check throws
+<span class="fc bfc" id="L169" title="All 2 branches covered.">        if (!this.ctx.hasValidSqlExceptions(method)) {</span>
+<span class="fc" id="L170">            messages.add(JdbcMsg.JAVA_TO_JDBC_HAS_INCOMPATIBLE_EXCEPTIONS);</span>
+        }
+
+<span class="fc" id="L173">        var type = method.getParameters().get(0).asType();</span>
+<span class="fc" id="L174">        var storeId = StoreID.of(method.getParameters().get(0).asType(), name);</span>
+<span class="fc" id="L175">        var source = SourceDV.converter(ctx, method);</span>
+<span class="fc bfc" id="L176" title="All 2 branches covered.">        return messages.hasMessages()</span>
+<span class="fc" id="L177">                ? FactoryResult.of(storeId, source, messages.build())</span>
+<span class="fc" id="L178">                : FactoryResult.of(storeId, new ConverterStaticSimple.Placeholder(type, source, method, SearchKey.of(method.getReturnType())));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private FactoryResult&lt;Java2JdbcConverter&gt; converterStaticStatement(Msg.Builder messages,
+                                                                       ExecutableElement method,
+                                                                       ConverterNameDV name) {
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">        if (method.getParameters().size() != 3) { // sanity-check</span>
+<span class="nc" id="L187">            throw new IllegalArgumentException(&quot;Invalid parameter count: &quot; + method.getParameters().size()); // sanity-check</span>
+        }
+
+        // ----- check return type
+<span class="fc" id="L191">        var returnType = method.getReturnType();</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">        if (returnType.getKind() != TypeKind.VOID) {</span>
+<span class="fc" id="L193">            messages.add(JdbcMsg.INVALID_RETURN_TYPE);</span>
+        }
+
+        // ----- check throws
+<span class="fc bfc" id="L197" title="All 2 branches covered.">        if (!this.ctx.hasValidSqlExceptions(method)) {</span>
+<span class="fc" id="L198">            messages.add(JdbcMsg.JAVA_TO_JDBC_HAS_INCOMPATIBLE_EXCEPTIONS);</span>
+        }
+
+        // ----- check parameter statement
+<span class="fc" id="L202">        var paramStmt = method.getParameters().get(0);</span>
+<span class="fc bfc" id="L203" title="All 2 branches covered.">        if (!this.ctx.JAVA_SQL_PreparedStatement.isSameType(paramStmt.asType())) {</span>
+<span class="fc" id="L204">            messages.add(JdbcMsg.JAVA_TO_JDBC_FIRST_PARAMETER_MUST_BE_PREPARED_STATEMENT);</span>
+<span class="fc bfc" id="L205" title="All 2 branches covered.">        } else if (!this.ctx.optionalFlag(method, paramStmt.asType()).isNonNullOrUnspecified()) {</span>
+<span class="fc" id="L206">            messages.add(JdbcMsg.JAVA_TO_JDBC_FIRST_PARAMETER_MUST_BE_NON_NULL_OR_UNSPECIFIED);</span>
+        }
+
+        // ----- check parameter: index
+<span class="fc" id="L210">        var paramIndex = method.getParameters().get(1);</span>
+<span class="fc bfc" id="L211" title="All 2 branches covered.">        if (paramIndex.asType().getKind() != TypeKind.INT) {</span>
+<span class="fc" id="L212">            messages.add(JdbcMsg.JAVA_TO_JDBC_SECOND_PARAMETER_MUST_BE_INT);</span>
+        }
+
+        // ----- check parameter: value
+<span class="fc" id="L216">        var paramValue = method.getParameters().get(2);</span>
+<span class="fc" id="L217">        var paramValueType = paramValue.asType();</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (!paramValueType.getKind().isPrimitive()</span>
+<span class="fc bfc" id="L219" title="All 2 branches covered.">                &amp;&amp; !this.ctx.optionalFlag(method, paramValueType).isNullableOrUnspecified()) {</span>
+<span class="fc" id="L220">            messages.add(JdbcMsg.JAVA_TO_JDBC_THIRD_PARAMETER_MUST_BE_NULLABLE_OR_UNSPECIFIED);</span>
+        }
+
+<span class="fc" id="L223">        var storeId = StoreID.of(paramValueType, name);</span>
+<span class="fc" id="L224">        var source = SourceDV.converter(ctx, method);</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        return messages.hasMessages()</span>
+<span class="fc" id="L226">                ? FactoryResult.of(storeId, source, messages.build())</span>
+<span class="fc" id="L227">                : FactoryResult.of(storeId, new ConverterStaticStatement(paramValueType, source, method));</span>
+    }
+
+    // ----------------------------------------------------------------
+
+    @Nullable FactoryResult&lt;Java2JdbcConverter&gt; tryToCreate(TypeMirror typeMirror) {
+<span class="fc" id="L233">        var storeId = StoreID.of(typeMirror);</span>
+<span class="fc" id="L234">        var elem = this.ctx.asElementOpt(typeMirror);</span>
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">        if (elem == null) {</span>
+<span class="nc" id="L236">            return FactoryResult.of(storeId, SourceDV.empty(), JdbcMsg.javaToJdbcElementTypeNotFound(typeMirror));</span>
+        }
+
+<span class="fc" id="L239">        var source = SourceDV.converter(ctx, elem);</span>
+<span class="fc" id="L240">        var messages = Msg.builder();</span>
+<span class="fc" id="L241">        FactoryResult&lt;Java2JdbcConverter&gt; annotatedConverter = null;</span>
+
+<span class="fc bfc" id="L243" title="All 2 branches covered.">        for (var child : elem.getEnclosedElements()) {</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">            if (!(child instanceof ExecutableElement executable)) {</span>
+                continue;
+<span class="fc bfc" id="L246" title="All 2 branches covered.">            } else if (!ctx.JAVA_TO_JDBC.hasAnno(executable)) {</span>
+<span class="fc" id="L247">                continue;</span>
+            }
+<span class="fc" id="L249">            var javaToJdbcAnno = ctx.JAVA_TO_JDBC.getAnno(executable, ConverterNameDV.unnamed());</span>
+<span class="pc bpc" id="L250" title="1 of 2 branches missed.">            if (javaToJdbcAnno.isBlankName()) {</span>
+<span class="nc" id="L251">                messages.add(JdbcMsg.annotationValueMustNotBeBlank(&quot;@JavaToJdbc&quot;));</span>
+<span class="fc bfc" id="L252" title="All 2 branches covered.">            } else if (javaToJdbcAnno.hasName()) {</span>
+<span class="fc" id="L253">                messages.add(JdbcMsg.JAVA_TO_JDBC_ANNOTATION_NAME_UNSUPPORTED);</span>
+            } else {
+<span class="fc" id="L255">                var converter = this.converterMethod(executable);</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">                if (converter != null) {</span>
+<span class="fc bfc" id="L257" title="All 2 branches covered.">                    if (converter.hasMessages()) {</span>
+<span class="fc" id="L258">                        messages.add(converter.messages());</span>
+<span class="fc bfc" id="L259" title="All 2 branches covered.">                    } else if (!this.ctx.isSubtype(typeMirror, converter.type())) {</span>
+<span class="fc" id="L260">                        messages.add(JdbcMsg.javaToJdbcAnnotationHasWrongType(converter.type()));</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">                    } else if (annotatedConverter == null) {</span>
+<span class="fc" id="L262">                        annotatedConverter = converter;</span>
+                    } else {
+<span class="fc" id="L264">                        messages.add(JdbcMsg.JAVA_TO_JDBC_TOO_MANY_ANNOTATIONS);</span>
+                    }
+                } else {
+<span class="fc" id="L267">                    messages.add(INVALID_STATIC_PARAMETER_COUNT);</span>
+                }
+            }
+<span class="fc" id="L270">        }</span>
+<span class="fc bfc" id="L271" title="All 2 branches covered.">        if (messages.hasMessages()) {</span>
+<span class="fc" id="L272">            return FactoryResult.of(storeId, source, messages.build());</span>
+<span class="fc bfc" id="L273" title="All 2 branches covered.">        } else if (annotatedConverter != null) {</span>
+<span class="fc" id="L274">            return annotatedConverter;</span>
+<span class="pc bpc" id="L275" title="1 of 2 branches missed.">        } else if (elem instanceof TypeElement type) {</span>
+<span class="fc bfc" id="L276" title="All 2 branches covered.">            if (type.getKind() == RECORD) {</span>
+<span class="fc" id="L277">                return this.converterRecord(type);</span>
+<span class="fc bfc" id="L278" title="All 2 branches covered.">            } else if (type.getKind() == ElementKind.ENUM) {</span>
+<span class="fc" id="L279">                return this.converterEnum(type);</span>
+            }
+        }
+<span class="fc" id="L282">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
