@@ -6,8 +6,7 @@ package io.kaumei.jdbc.anno.jdbc2java;
 
 import com.palantir.javapoet.CodeBlock;
 import io.kaumei.jdbc.anno.gen.TargetMethod;
-import io.kaumei.jdbc.anno.model.OptionalFlag;
-import io.kaumei.jdbc.anno.model.SQLNameDV;
+import io.kaumei.jdbc.anno.model.*;
 import io.kaumei.jdbc.anno.store.Converter;
 import io.kaumei.jdbc.anno.store.ConverterBasis;
 import io.kaumei.jdbc.anno.store.SearchKey;
@@ -16,46 +15,55 @@ import io.kaumei.jdbc.anno.store.SourceDV;
 import javax.lang.model.type.TypeMirror;
 import java.util.Map;
 
-public sealed class Jdbc2JavaConverter extends ConverterBasis
-        permits ConverterColumnNative, ConverterColumnObject, ConverterColumnResultSet, ConverterRowObjects, ConverterRowResultSet {
+public sealed class Jdbc2JavaConverter
+        extends ConverterBasis
+        permits Jdbc2JavaConverter.ColumnConverter, Jdbc2JavaConverter.RowConverter {
 
     interface Placeholder extends Converter.Placeholder {
         Jdbc2JavaConverter resolve(Map&lt;SearchKey, Jdbc2JavaConverter&gt; converter);
     }
 
+    public abstract static sealed class ColumnConverter
+            extends Jdbc2JavaConverter
+            permits ConverterColumnNative, ConverterColumnObject, ConverterColumnResultSet {
+
+        protected ColumnConverter(TypeMirror type, SourceDV source, Visibility visibility) {
+<span class="fc" id="L31">            super(type, source, visibility);</span>
+<span class="fc" id="L32">        }</span>
+
+        public abstract boolean hasSqlType();
+
+        public abstract SQLTypeDV sqlType();
+
+        public abstract CodeBlock columnNullCheck(String varName);
+
+        public abstract CodeBlock callNullCheck(String varName);
+
+        public abstract void addColumnByIndex(TargetMethod builder, String localVarName, ColumnIndex index, OptionalFlag optional);
+
+        public abstract void addColumnByName(TargetMethod builder, String localVarName, SQLNameDV columnName, OptionalFlag optional);
+    }
+
+    public interface Callable {
+            //boolean hasSqlType();
+        void addCallToRow(TargetMethod builder, String localVarName, OptionalFlag optional, Map&lt;String, ColumnIndex&gt; map);
+    }
+
+    public abstract static sealed class RowConverter
+            extends Jdbc2JavaConverter
+            permits ConverterRowObjects, ConverterRowResultSet {
+        protected RowConverter(TypeMirror type, SourceDV source, Visibility visibility) {
+<span class="fc" id="L56">            super(type, source, visibility);</span>
+<span class="fc" id="L57">        }</span>
+
+        public abstract void addResultSetToRow(TargetMethod builder, String localVarName, OptionalFlag optional);
+    }
+
     // ------------------------------------------------------------------------
 
-    protected Jdbc2JavaConverter(TypeMirror type, SourceDV source) {
-<span class="fc" id="L29">        super(type, source);</span>
-<span class="fc" id="L30">    }</span>
-
-    // ------------------------------------------------------------------------
-
-    public boolean isColumn() {
-<span class="nc" id="L35">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
-    }
-
-    public CodeBlock nullCheck(String varName) {
-<span class="nc" id="L39">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
-    }
-
-    // ------------------------------------------------------------------------
-
-    // if isColumn == true
-    public void addColumnByIndex(TargetMethod builder, String localVarName, ColumnIndex indexVarName, OptionalFlag optional) {
-<span class="nc" id="L46">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
-    }
-
-    public void addColumnByName(TargetMethod builder, String localVarName, SQLNameDV columnName, OptionalFlag optional) {
-<span class="nc" id="L50">        throw new UnsupportedOperationException(this.toString()); // sanity-check</span>
-    }
-
-    // ------------------------------------------------------------------------
-
-    // if isColumn == false
-    public void addResultSetToRow(TargetMethod builder, String localVarName, OptionalFlag optional) {
-<span class="nc" id="L57">        throw new UnsupportedOperationException(); // sanity-check</span>
-    }
+    protected Jdbc2JavaConverter(TypeMirror type, SourceDV source, Visibility visibility) {
+<span class="fc" id="L65">        super(type, source, visibility);</span>
+<span class="fc" id="L66">    }</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

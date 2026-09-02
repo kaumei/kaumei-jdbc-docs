@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>KaumeiTxProxy.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-tx</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.tx</a> &gt; <span class="el_source">KaumeiTxProxy.java</span></div><h1>KaumeiTxProxy.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2026 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.tx;
+
+import io.kaumei.jdbc.annotation.KaumeiTx;
+import org.jspecify.annotations.Nullable;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+import java.util.*;
+
+import static java.util.Objects.requireNonNull;
+
+/**
+ * Wraps an annotated interface around an implementation and applies its {@link KaumeiTx}
+ * declarations through a {@link KaumeiTxManager}.
+ *
+ * &lt;p&gt;Only annotations on the interface and its methods are considered. Annotation resolution and
+ * transaction definitions are prepared when the proxy is created. The target must obtain its JDBC
+ * connections from the same transaction manager so its database work participates in these
+ * transactions.
+ *
+ * &lt;p&gt;Void methods use the transaction manager's void callback overload. Methods with a return
+ * value use its nullable result overload; the proxy does not enforce business return contracts.
+ */
+public final class KaumeiTxProxy {
+
+<span class="fc" id="L35">    private static final @Nullable Object[] NO_ARGUMENTS = new Object[0];</span>
+
+    private final Object target;
+    private final KaumeiTxManager txManager;
+    private final Map&lt;Method, MethodPlan&gt; plans;
+
+<span class="fc" id="L41">    private KaumeiTxProxy(Object target, KaumeiTxManager txManager, Map&lt;Method, MethodPlan&gt; plans) {</span>
+<span class="fc" id="L42">        this.target = target;</span>
+<span class="fc" id="L43">        this.txManager = txManager;</span>
+<span class="fc" id="L44">        this.plans = plans;</span>
+<span class="fc" id="L45">    }</span>
+
+    /**
+     * Creates a transaction-aware proxy for {@code target}.
+     * @param api interface exposed by the proxy
+     * @param target implementation of {@code api}
+     * @param txManager transaction manager used for annotated calls and by the target as its
+     * {@code JdbcConnectionProvider}
+     */
+    public static &lt;T&gt; T wrap(Class&lt;T&gt; api, T target, KaumeiTxManager txManager) {
+<span class="fc" id="L55">        requireNonNull(api, &quot;api&quot;);</span>
+<span class="fc" id="L56">        requireNonNull(target, &quot;target&quot;);</span>
+<span class="fc" id="L57">        requireNonNull(txManager, &quot;txManager&quot;);</span>
+
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        if (!api.isInterface()) {</span>
+<span class="fc" id="L60">            throw new IllegalArgumentException(&quot;API must be an interface: &quot; + api.getName());</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        } else if (!Modifier.isPublic(api.getModifiers())) {</span>
+<span class="fc" id="L62">            throw new IllegalArgumentException(&quot;API must be public: &quot; + api.getName());</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        } else if (!api.isInstance(target)) {</span>
+<span class="fc" id="L64">            throw new IllegalArgumentException(&quot;Target must implement &quot; + api.getName() + &quot;: &quot; + target.getClass().getName());</span>
+        }
+
+<span class="fc" id="L67">        List&lt;List&lt;Class&lt;?&gt;&gt;&gt; interfaceLevels = interfaceLevels(api);</span>
+<span class="fc" id="L68">        Map&lt;Method, MethodPlan&gt; plans = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        for (Method method : api.getMethods()) {</span>
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">            if (Modifier.isStatic(method.getModifiers())) {</span>
+<span class="nc" id="L71">                continue;</span>
+            }
+<span class="fc" id="L73">            KaumeiTx annotation = resolveAnnotation(method, interfaceLevels);</span>
+<span class="fc" id="L74">            boolean invokeDefault = invokesInterfaceDefault(method, target.getClass());</span>
+<span class="fc" id="L75">            plans.put(method, methodPlan(method, target, annotation, invokeDefault));</span>
+        }
+
+<span class="fc" id="L78">        KaumeiTxProxy handler = new KaumeiTxProxy(target, txManager, Map.copyOf(plans));</span>
+<span class="fc" id="L79">        Object proxy = Proxy.newProxyInstance(api.getClassLoader(), new Class&lt;?&gt;[]{api}, handler::invokeTransactional);</span>
+<span class="fc" id="L80">        return api.cast(proxy);</span>
+    }
+
+    private static MethodPlan methodPlan(Method method, Object target, @Nullable KaumeiTx annotation,
+                                         boolean invokeDefault) {
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        ReturnModel returnModel = method.getReturnType() == void.class ? ReturnModel.VOID : ReturnModel.VALUE;</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        MethodHandle targetMethod = invokeDefault ? null : targetMethod(method, target);</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (annotation == null) {</span>
+<span class="fc" id="L88">            return new MethodPlan(null, KaumeiTxDefinition.DEFAULT, returnModel, method, targetMethod,</span>
+                    invokeDefault);
+        }
+<span class="fc" id="L91">        return new MethodPlan(</span>
+<span class="fc" id="L92">                annotation.value(),</span>
+<span class="fc" id="L93">                KaumeiTxDefinition.from(annotation),</span>
+                returnModel,
+                method,
+                targetMethod,
+                invokeDefault);
+    }
+
+    private static MethodHandle targetMethod(Method method, Object target) {
+        try {
+<span class="fc" id="L102">            MethodHandle targetMethod = MethodHandles.publicLookup()</span>
+<span class="fc" id="L103">                    .unreflect(method)</span>
+<span class="fc" id="L104">                    .bindTo(target)</span>
+<span class="fc" id="L105">                    .asSpreader(Object[].class, method.getParameterCount());</span>
+<span class="fc" id="L106">            return targetMethod.asType(MethodType.methodType(Object.class, Object[].class));</span>
+<span class="nc" id="L107">        } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L108">            throw new IllegalArgumentException(&quot;Cannot access target method &quot; + method.toGenericString(), e);</span>
+        }
+    }
+
+    private static @Nullable KaumeiTx resolveAnnotation(Method method, List&lt;List&lt;Class&lt;?&gt;&gt;&gt; interfaceLevels) {
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        for (List&lt;Class&lt;?&gt;&gt; level : interfaceLevels) {</span>
+<span class="fc" id="L114">            List&lt;AnnotationSource&gt; annotations = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L115">            boolean declarationFound = false;</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">            for (Class&lt;?&gt; candidate : level) {</span>
+<span class="fc" id="L117">                Method declaration = declaredMethod(candidate, method);</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">                if (declaration == null) {</span>
+<span class="fc" id="L119">                    continue;</span>
+                }
+<span class="fc" id="L121">                declarationFound = true;</span>
+<span class="fc" id="L122">                KaumeiTx annotation = declaration.getDeclaredAnnotation(KaumeiTx.class);</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">                if (annotation != null) {</span>
+<span class="fc" id="L124">                    annotations.add(new AnnotationSource(annotation, declaration.toGenericString()));</span>
+                }
+<span class="fc" id="L126">            }</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            if (declarationFound) {</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">                if (!annotations.isEmpty()) {</span>
+<span class="fc" id="L129">                    return uniqueAnnotation(method, annotations);</span>
+                }
+                break;
+            }
+<span class="fc" id="L133">        }</span>
+
+<span class="fc bfc" id="L135" title="All 2 branches covered.">        for (List&lt;Class&lt;?&gt;&gt; level : interfaceLevels) {</span>
+<span class="fc" id="L136">            List&lt;AnnotationSource&gt; annotations = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">            for (Class&lt;?&gt; candidate : level) {</span>
+<span class="fc" id="L138">                KaumeiTx annotation = candidate.getDeclaredAnnotation(KaumeiTx.class);</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">                if (annotation != null) {</span>
+<span class="fc" id="L140">                    annotations.add(new AnnotationSource(annotation, candidate.getName()));</span>
+                }
+<span class="fc" id="L142">            }</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">            if (!annotations.isEmpty()) {</span>
+<span class="fc" id="L144">                return uniqueAnnotation(method, annotations);</span>
+            }
+<span class="fc" id="L146">        }</span>
+<span class="fc" id="L147">        return null;</span>
+    }
+
+    private static @Nullable Method declaredMethod(Class&lt;?&gt; candidate, Method method) {
+        try {
+<span class="fc" id="L152">            return candidate.getDeclaredMethod(method.getName(), method.getParameterTypes());</span>
+<span class="fc" id="L153">        } catch (NoSuchMethodException e) {</span>
+<span class="fc" id="L154">            return null;</span>
+        }
+    }
+
+    private static KaumeiTx uniqueAnnotation(Method method, List&lt;AnnotationSource&gt; sources) {
+<span class="fc" id="L159">        KaumeiTx selected = sources.get(0).annotation();</span>
+<span class="pc bfc" id="L160" title="All 2 branches covered.">        for (int i = 1; i &lt; sources.size(); i++) {</span>
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">            if (!selected.equals(sources.get(i).annotation())) {</span>
+<span class="fc" id="L162">                StringBuilder message = new StringBuilder();</span>
+<span class="fc" id="L163">                message.append(&quot;Conflicting @KaumeiTx annotations for &quot;);</span>
+<span class="fc" id="L164">                message.append(method.toGenericString());</span>
+<span class="fc" id="L165">                message.append(&quot; on &quot;);</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">                for (int sourceIndex = 0; sourceIndex &lt; sources.size(); sourceIndex++) {</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">                    if (sourceIndex &gt; 0) {</span>
+<span class="fc" id="L168">                        message.append(&quot;, &quot;);</span>
+                    }
+<span class="fc" id="L170">                    message.append(sources.get(sourceIndex).source());</span>
+                }
+<span class="fc" id="L172">                throw new IllegalArgumentException(message.toString());</span>
+            }
+        }
+<span class="fc" id="L175">        return selected;</span>
+    }
+
+    private static List&lt;List&lt;Class&lt;?&gt;&gt;&gt; interfaceLevels(Class&lt;?&gt; api) {
+<span class="fc" id="L179">        List&lt;List&lt;Class&lt;?&gt;&gt;&gt; levels = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L180">        Set&lt;Class&lt;?&gt;&gt; visited = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L181">        List&lt;Class&lt;?&gt;&gt; current = List.of(api);</span>
+<span class="fc bfc" id="L182" title="All 2 branches covered.">        while (!current.isEmpty()) {</span>
+<span class="fc" id="L183">            List&lt;Class&lt;?&gt;&gt; level = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L184">            List&lt;Class&lt;?&gt;&gt; next = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">            for (Class&lt;?&gt; candidate : current) {</span>
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">                if (!visited.add(candidate)) {</span>
+<span class="nc" id="L187">                    continue;</span>
+                }
+<span class="fc" id="L189">                level.add(candidate);</span>
+<span class="fc bfc" id="L190" title="All 2 branches covered.">                for (Class&lt;?&gt; parent : candidate.getInterfaces()) {</span>
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">                    if (!visited.contains(parent)) {</span>
+<span class="fc" id="L192">                        next.add(parent);</span>
+                    }
+                }
+<span class="fc" id="L195">            }</span>
+<span class="fc" id="L196">            level.sort(Comparator.comparing(Class::getName));</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">            if (!level.isEmpty()) {</span>
+<span class="fc" id="L198">                levels.add(List.copyOf(level));</span>
+            }
+<span class="fc" id="L200">            current = next;</span>
+<span class="fc" id="L201">        }</span>
+<span class="fc" id="L202">        return List.copyOf(levels);</span>
+    }
+
+    private static boolean invokesInterfaceDefault(Method method, Class&lt;?&gt; targetType) {
+<span class="fc bfc" id="L206" title="All 2 branches covered.">        if (!method.isDefault()) {</span>
+<span class="fc" id="L207">            return false;</span>
+        }
+        try {
+<span class="fc" id="L210">            Method targetMethod = targetType.getMethod(method.getName(), method.getParameterTypes());</span>
+<span class="fc" id="L211">            return targetMethod.getDeclaringClass().isInterface();</span>
+<span class="nc" id="L212">        } catch (NoSuchMethodException e) {</span>
+<span class="nc" id="L213">            throw new IllegalArgumentException(&quot;No matching target method for &quot; + method.toGenericString(), e);</span>
+        }
+    }
+
+<span class="fc" id="L217">    private enum ReturnModel {</span>
+<span class="fc" id="L218">        VOID,</span>
+<span class="fc" id="L219">        VALUE</span>
+    }
+
+<span class="fc" id="L222">    private record MethodPlan(KaumeiTx.@Nullable Type type, KaumeiTxDefinition definition,</span>
+                              ReturnModel returnModel, Method method,
+                              @Nullable MethodHandle targetMethod, boolean invokeDefault) {
+    }
+
+<span class="fc" id="L227">    private record AnnotationSource(KaumeiTx annotation, String source) {</span>
+    }
+
+    private @Nullable Object invokeTransactional(
+            Object proxy,
+            Method method,
+            @Nullable Object @Nullable [] arguments) throws Throwable {
+<span class="fc bfc" id="L234" title="All 2 branches covered.">        @Nullable Object[] invocationArguments = arguments == null ? NO_ARGUMENTS : arguments;</span>
+<span class="fc bfc" id="L235" title="All 2 branches covered.">        if (method.getDeclaringClass() == Object.class) {</span>
+<span class="fc" id="L236">            return invokeObjectMethod(proxy, method, invocationArguments);</span>
+        }
+
+<span class="fc" id="L239">        MethodPlan plan = plans.get(method);</span>
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">        if (plan == null) {</span>
+<span class="nc" id="L241">            throw new IllegalStateException(&quot;No transaction plan for &quot; + method.toGenericString());</span>
+        }
+<span class="fc" id="L243">        KaumeiTxBusinessMethod businessMethod = new KaumeiTxBusinessMethod(</span>
+                proxy,
+<span class="fc" id="L245">                plan.method(),</span>
+<span class="fc" id="L246">                plan.targetMethod(),</span>
+<span class="fc" id="L247">                plan.invokeDefault(),</span>
+                invocationArguments);
+<span class="fc bfc" id="L249" title="All 2 branches covered.">        if (plan.type() == null) {</span>
+<span class="fc" id="L250">            return businessMethod.invoke(null);</span>
+        }
+<span class="fc bfc" id="L252" title="All 2 branches covered.">        if (plan.returnModel() == ReturnModel.VOID) {</span>
+<span class="fc" id="L253">            KaumeiTxManager.Callback callback = businessMethod::invoke;</span>
+<span class="pc bpc" id="L254" title="4 of 7 branches missed.">            switch (plan.type()) {</span>
+<span class="fc" id="L255">                case REQUIRED -&gt; txManager.required(plan.definition(), callback);</span>
+<span class="nc" id="L256">                case REQUIRES_NEW -&gt; txManager.requiresNew(plan.definition(), callback);</span>
+<span class="fc" id="L257">                case MANDATORY -&gt; txManager.mandatory(plan.definition(), callback);</span>
+<span class="fc" id="L258">                case SUPPORTS -&gt; txManager.supports(plan.definition(), callback);</span>
+<span class="nc" id="L259">                case NOT_SUPPORTED -&gt; txManager.notSupported(plan.definition(), callback);</span>
+<span class="nc" id="L260">                case NEVER -&gt; txManager.never(plan.definition(), callback);</span>
+            }
+<span class="fc" id="L262">            return null;</span>
+        }
+
+<span class="fc" id="L265">        KaumeiTxManager.CallbackWithNullableResult&lt;Object&gt; callback = businessMethod::invoke;</span>
+<span class="fc bfc" id="L266" title="All 6 branches covered.">        return switch (plan.type()) {</span>
+<span class="fc" id="L267">            case REQUIRED -&gt; txManager.requiredOpt(plan.definition(), callback);</span>
+<span class="fc" id="L268">            case REQUIRES_NEW -&gt; txManager.requiresNewOpt(plan.definition(), callback);</span>
+<span class="fc" id="L269">            case MANDATORY -&gt; txManager.mandatoryOpt(plan.definition(), callback);</span>
+<span class="fc" id="L270">            case SUPPORTS -&gt; txManager.supportsOpt(plan.definition(), callback);</span>
+<span class="fc" id="L271">            case NOT_SUPPORTED -&gt; txManager.notSupportedOpt(plan.definition(), callback);</span>
+<span class="fc" id="L272">            case NEVER -&gt; txManager.neverOpt(plan.definition(), callback);</span>
+        };
+    }
+
+    private Object invokeObjectMethod(Object proxy, Method method, @Nullable Object[] arguments) {
+<span class="pc bpc" id="L277" title="1 of 4 branches missed.">        return switch (method.getName()) {</span>
+<span class="fc" id="L278">            case &quot;toString&quot; -&gt; &quot;KaumeiTxProxy[&quot; + target + &quot;]&quot;;</span>
+<span class="fc" id="L279">            case &quot;hashCode&quot; -&gt; System.identityHashCode(proxy);</span>
+<span class="fc bfc" id="L280" title="All 2 branches covered.">            case &quot;equals&quot; -&gt; proxy == arguments[0];</span>
+<span class="nc" id="L281">            default -&gt; throw new UnsupportedOperationException(method.toString());</span>
+        };
+    }
+}
+
+final class KaumeiTxBusinessMethod {
+
+    private final Object proxy;
+    private final Method method;
+    private final @Nullable MethodHandle targetMethod;
+    private final boolean invokeDefault;
+    private final @Nullable Object[] arguments;
+
+    KaumeiTxBusinessMethod(Object proxy, Method method, @Nullable MethodHandle targetMethod,
+<span class="fc" id="L295">                           boolean invokeDefault, @Nullable Object[] arguments) {</span>
+<span class="fc" id="L296">        this.proxy = proxy;</span>
+<span class="fc" id="L297">        this.method = method;</span>
+<span class="fc" id="L298">        this.targetMethod = targetMethod;</span>
+<span class="fc" id="L299">        this.invokeDefault = invokeDefault;</span>
+<span class="fc" id="L300">        this.arguments = arguments;</span>
+<span class="fc" id="L301">    }</span>
+
+    @Nullable Object invoke(@Nullable KaumeiTxContext context) {
+        try {
+<span class="fc bfc" id="L305" title="All 2 branches covered.">            if (invokeDefault) {</span>
+<span class="fc" id="L306">                return InvocationHandler.invokeDefault(proxy, method, arguments);</span>
+            }
+<span class="fc" id="L308">            return (Object) requireNonNull(targetMethod, &quot;targetMethod&quot;).invokeExact(arguments);</span>
+<span class="fc" id="L309">        } catch (Throwable e) {</span>
+<span class="nc" id="L310">            return KaumeiTxBusinessMethod.&lt;Object, RuntimeException&gt;throwUnchecked(e);</span>
+        }
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private static &lt;T, E extends Throwable&gt; T throwUnchecked(Throwable exception) throws E {
+<span class="fc" id="L316">        throw (E) exception;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

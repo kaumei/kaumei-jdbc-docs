@@ -13,42 +13,52 @@ import javax.lang.model.type.TypeMirror;
 
 public class JavaType {
 
+    public static JavaType of(Context ctx, Class&lt;?&gt; cls) {
+<span class="fc" id="L17">        return new JavaType(ctx, ctx.getTypeElement(cls.getCanonicalName()));</span>
+    }
+
+    public static JavaType of(Context ctx, CharSequence fcq) {
+<span class="fc" id="L21">        return new JavaType(ctx, ctx.getTypeElement(fcq));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
     private final Context ctx;
     private final TypeElement typeElement;
     private final TypeMirror typeMirror;
     private final boolean hasGenerics;
 
-<span class="fc" id="L21">    public JavaType(Context ctx, TypeElement typeElement) {</span>
-<span class="fc" id="L22">        this.ctx = ctx;</span>
-<span class="fc" id="L23">        this.typeElement = typeElement;</span>
-<span class="fc bfc" id="L24" title="All 2 branches covered.">        this.hasGenerics = !typeElement.getTypeParameters().isEmpty();</span>
-<span class="fc bfc" id="L25" title="All 2 branches covered.">        this.typeMirror = hasGenerics ? this.ctx.erasure(typeElement.asType()) : typeElement.asType();</span>
-<span class="pc bpc" id="L26" title="1 of 2 branches missed.">        if (this.typeMirror.getKind() == TypeKind.ERROR) {</span>
-<span class="nc" id="L27">            throw new IllegalArgumentException(&quot;Type has ERROR kind: &quot; + this.typeMirror);</span>
+<span class="fc" id="L31">    private JavaType(Context ctx, TypeElement typeElement) {</span>
+<span class="fc" id="L32">        this.ctx = ctx;</span>
+<span class="fc" id="L33">        this.typeElement = typeElement;</span>
+<span class="fc bfc" id="L34" title="All 2 branches covered.">        this.hasGenerics = !typeElement.getTypeParameters().isEmpty();</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        this.typeMirror = hasGenerics ? this.ctx.erasure(typeElement.asType()) : typeElement.asType();</span>
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (this.typeMirror.getKind() == TypeKind.ERROR) {</span>
+<span class="nc" id="L37">            throw new IllegalArgumentException(&quot;Type has ERROR kind: &quot; + this.typeMirror);</span>
         }
-<span class="fc" id="L29">    }</span>
+<span class="fc" id="L39">    }</span>
 
     @Override
     public String toString() {
-<span class="nc" id="L33">        return &quot;JavaType{typeElement=&quot; + typeElement +</span>
+<span class="nc" id="L43">        return &quot;JavaType{typeElement=&quot; + typeElement +</span>
                 &quot;, typeMirror=&quot; + typeMirror +
                 &quot;, hasGenerics=&quot; + hasGenerics +
                 '}';
     }
 
     public TypeMirror typeMirror() {
-<span class="fc" id="L40">        return this.typeMirror;</span>
+<span class="fc" id="L50">        return this.typeMirror;</span>
     }
 
     public boolean isSameType(@Nullable TypeMirror other) {
-<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (other == null) {</span>
-<span class="nc" id="L45">            return false;</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">        if (other == null) {</span>
+<span class="nc" id="L55">            return false;</span>
         }
-<span class="fc bfc" id="L47" title="All 2 branches covered.">        return this.ctx.isSameType(typeMirror, this.hasGenerics ? this.ctx.erasure(other) : other);</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        return this.ctx.isSameType(typeMirror, this.hasGenerics ? this.ctx.erasure(other) : other);</span>
     }
 
     public boolean isSupertypeOf(TypeMirror other) {
-<span class="fc" id="L51">        return this.ctx.isSubtype(other, this.typeMirror);</span>
+<span class="fc" id="L61">        return this.ctx.isSubtype(other, this.typeMirror);</span>
     }
 
 }

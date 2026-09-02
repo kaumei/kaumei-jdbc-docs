@@ -4,12 +4,17 @@
  */
 package io.kaumei.jdbc.anno.gen;
 
-import com.palantir.javapoet.*;
-import io.kaumei.jdbc.JdbcConnectionProvider;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.FieldSpec;
+import com.palantir.javapoet.MethodSpec;
+import com.palantir.javapoet.TypeSpec;
 import io.kaumei.jdbc.anno.ProcessorException;
 import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.core.CodeGenerationException;
+import io.kaumei.jdbc.core.JdbcConnectionProvider;
 import org.jspecify.annotations.Nullable;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
@@ -17,89 +22,91 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static io.kaumei.jdbc.anno.Processor.GENERATED;
+import static io.kaumei.jdbc.anno.utils.PrintStackTrace.appendStackTrace;
 
-public class KaumeiClassBuilder implements KaumeiBuilder {
+public class KaumeiClassBuilder {
     // ----- state
     private final TypeElement iface;
     private final String packageName;
     private final TypeSpec.Builder typeSpecBuilder;
-<span class="fc" id="L26">    private final Map&lt;String, TargetMethod&gt; classNames = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L32">    private final Map&lt;String, TargetMethod&gt; classNames = new HashMap&lt;&gt;();</span>
 
-<span class="fc" id="L28">    KaumeiClassBuilder(Context ctx, String packageName, TypeElement iface) {</span>
-<span class="fc" id="L29">        this.iface = iface;</span>
-<span class="fc" id="L30">        this.packageName = packageName;</span>
-<span class="fc" id="L31">        var simpleName = iface.getSimpleName() + ctx.kaumeiConfig.generatedClassSuffix();</span>
+<span class="fc" id="L34">    KaumeiClassBuilder(Context ctx, String packageName, TypeElement iface) {</span>
+<span class="fc" id="L35">        this.iface = iface;</span>
+<span class="fc" id="L36">        this.packageName = packageName;</span>
+<span class="fc" id="L37">        var simpleName = iface.getSimpleName() + ctx.kaumeiConfig.generatedClassSuffix();</span>
 
-<span class="fc" id="L33">        var generationAnno = ctx.JDBC_GENERATION.getAnnoOpt(iface);</span>
+<span class="fc" id="L39">        var generationAnno = ctx.JDBC_GENERATION.getAnnoOpt(iface);</span>
 
-<span class="fc" id="L35">        this.typeSpecBuilder = TypeSpec.classBuilder(simpleName)</span>
-<span class="fc" id="L36">                .addModifiers(Modifier.PUBLIC)</span>
-<span class="fc" id="L37">                .addSuperinterface(ClassName.get(iface));</span>
+<span class="fc" id="L41">        this.typeSpecBuilder = TypeSpec.classBuilder(simpleName)</span>
+<span class="fc" id="L42">                .addModifiers(Modifier.PUBLIC)</span>
+<span class="fc" id="L43">                .addSuperinterface(ClassName.get(iface));</span>
 
-<span class="fc" id="L39">        this.typeSpecBuilder.addAnnotation(GENERATED);</span>
-        // ----- copy all annotations
-<span class="fc bfc" id="L41" title="All 2 branches covered.">        for (var mirror : iface.getAnnotationMirrors()) {</span>
-<span class="fc" id="L42">            var spec = ctx.kaumeiJdbcGenerator.annotationSpec(mirror);</span>
-<span class="fc bfc" id="L43" title="All 2 branches covered.">            if (spec != null) {</span>
-<span class="fc" id="L44">                typeSpecBuilder.addAnnotation(AnnotationSpec.get(mirror));</span>
-            }
-<span class="fc" id="L46">        }</span>
+<span class="fc" id="L45">        this.typeSpecBuilder.addAnnotation(GENERATED);</span>
         // ----- add additional specified annotations
-<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (generationAnno != null) {</span>
-<span class="fc bfc" id="L49" title="All 2 branches covered.">            for (TypeMirror anno : generationAnno.classAnnotations()) {</span>
-<span class="fc" id="L50">                this.typeSpecBuilder.addAnnotation(ClassName.get(ctx.asTypeElement(anno)));</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (generationAnno != null) {</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">            for (TypeMirror anno : generationAnno.classAnnotations()) {</span>
+<span class="fc" id="L49">                this.typeSpecBuilder.addAnnotation(ClassName.get(ctx.asTypeElement(anno)));</span>
             }
         }
 
         // ----- Add supplier field
-<span class="fc" id="L55">        typeSpecBuilder.addField(</span>
-<span class="fc" id="L56">                FieldSpec.builder(JdbcConnectionProvider.class, &quot;supplier&quot;, Modifier.PRIVATE, Modifier.FINAL).build());</span>
+<span class="fc" id="L54">        typeSpecBuilder.addField(</span>
+<span class="fc" id="L55">                FieldSpec.builder(JdbcConnectionProvider.class, &quot;supplier&quot;, Modifier.PRIVATE, Modifier.FINAL).build());</span>
 
 
-<span class="fc" id="L59">        var constructor = MethodSpec.constructorBuilder()</span>
-<span class="fc" id="L60">                .addModifiers(Modifier.PUBLIC)</span>
-<span class="fc" id="L61">                .addParameter(JdbcConnectionProvider.class, &quot;supplier&quot;)</span>
-<span class="fc" id="L62">                .addStatement(&quot;this.supplier = $L&quot;, KaumeiLib.requireNonNull(&quot;supplier&quot;));</span>
+<span class="fc" id="L58">        var constructor = MethodSpec.constructorBuilder()</span>
+<span class="fc" id="L59">                .addModifiers(Modifier.PUBLIC)</span>
+<span class="fc" id="L60">                .addParameter(JdbcConnectionProvider.class, &quot;supplier&quot;)</span>
+<span class="fc" id="L61">                .addStatement(&quot;this.supplier = $L&quot;, KaumeiLib.requireNonNull(&quot;supplier&quot;));</span>
         // ----- add additional specified annotations
-<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (generationAnno != null) {</span>
-<span class="fc bfc" id="L65" title="All 2 branches covered.">            for (var anno : generationAnno.constructorAnnotations()) {</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (generationAnno != null) {</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">            for (var anno : generationAnno.constructorAnnotations()) {</span>
 
-<span class="fc" id="L67">                constructor.addAnnotation(ClassName.get(ctx.asTypeElement(anno)));</span>
+<span class="fc" id="L66">                constructor.addAnnotation(ClassName.get(ctx.asTypeElement(anno)));</span>
             }
         }
 
         // ----- Add constructor
-<span class="fc" id="L72">        this.typeSpecBuilder.addMethod(constructor.build());</span>
-<span class="fc" id="L73">    }</span>
+<span class="fc" id="L71">        this.typeSpecBuilder.addMethod(constructor.build());</span>
+<span class="fc" id="L72">    }</span>
 
-    @Override
     public TypeElement type() {
-<span class="fc" id="L77">        return this.iface;</span>
+<span class="fc" id="L75">        return this.iface;</span>
     }
 
-    @Override
     public TypeSpec build() {
-<span class="fc" id="L82">        return this.typeSpecBuilder.build();</span>
+<span class="fc" id="L79">        return this.typeSpecBuilder.build();</span>
     }
 
     public String packageName() {
-<span class="fc" id="L86">        return packageName;</span>
+<span class="fc" id="L83">        return packageName;</span>
     }
 
     @Nullable TargetMethod containsClass(String name) {
-<span class="fc" id="L90">        return classNames.get(name);</span>
+<span class="fc" id="L87">        return classNames.get(name);</span>
     }
 
     void addClass(String name, TypeSpec typeSpec, TargetMethod targetMethod) {
-<span class="pc bpc" id="L94" title="1 of 2 branches missed.">        if (classNames.put(name, targetMethod) != null) { // sanity-check</span>
-<span class="nc" id="L95">            throw new ProcessorException(&quot;Name already known: &quot; + name); // sanity-check</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        if (classNames.put(name, targetMethod) != null) { // sanity-check</span>
+<span class="nc" id="L92">            throw new ProcessorException(&quot;Name already known: &quot; + name); // sanity-check</span>
         }
-<span class="fc" id="L97">        this.typeSpecBuilder.addType(typeSpec);</span>
-<span class="fc" id="L98">    }</span>
+<span class="fc" id="L94">        this.typeSpecBuilder.addType(typeSpec);</span>
+<span class="fc" id="L95">    }</span>
 
     public void addMethod(MethodSpec methodSpec) {
-<span class="fc" id="L101">        this.typeSpecBuilder.addMethod(methodSpec);</span>
-<span class="fc" id="L102">    }</span>
+<span class="fc" id="L98">        this.typeSpecBuilder.addMethod(methodSpec);</span>
+<span class="fc" id="L99">    }</span>
+
+    public void addMethodThrows(ExecutableElement method, Exception e) {
+<span class="fc" id="L102">        var sb = new StringBuilder();</span>
+<span class="fc" id="L103">        sb.append(&quot;Annotation processing caught internal exception:\n&quot;);</span>
+<span class="fc" id="L104">        appendStackTrace(sb, e);</span>
+<span class="fc" id="L105">        this.addMethod(MethodSpec.overriding(method)</span>
+<span class="fc" id="L106">                .addStatement(&quot;throw new $T($S)&quot;, CodeGenerationException.class, sb.toString())</span>
+<span class="fc" id="L107">                .build());</span>
+        // sanity-check:off
+<span class="fc" id="L109">    }</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

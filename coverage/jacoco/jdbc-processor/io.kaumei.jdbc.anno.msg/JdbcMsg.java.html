@@ -11,6 +11,7 @@ import io.kaumei.jdbc.anno.store.SearchKey;
 import io.kaumei.jdbc.anno.store.SourceDV;
 import io.kaumei.jdbc.anno.store.StoreID;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
@@ -23,406 +24,509 @@ import static io.kaumei.jdbc.anno.ctx.JavaModelToString.searchKey;
 
 public class JdbcMsg {
 
-    private JdbcMsg() { // JaCoCo:no
+    private JdbcMsg() {
     }
 
-<span class="fc" id="L29">    public static final Msg.Message INVALID_DEPENDENT_CONVERTER = Msg.of(&quot;invalid dependent converter&quot;);</span>
-<span class="fc" id="L30">    public static final Msg.Message DUPLICATE_KEY = Msg.of(&quot;duplicate key&quot;);</span>
+<span class="fc" id="L30">    public static final Msg.Message INVALID_DEPENDENT_CONVERTER = Msg.of(&quot;invalid dependent converter&quot;);</span>
+<span class="fc" id="L31">    public static final Msg.Message DUPLICATE_KEY = Msg.of(&quot;duplicate key&quot;);</span>
 
     public static Msg.Message duplicateConverter(SourceDV source) {
-<span class="fc" id="L33">        return Msg.of(&quot;Duplicate converter: &quot; + source);</span>
+<span class="fc" id="L34">        return Msg.of(&quot;Duplicate converter: &quot; + source);</span>
     }
 
-<span class="fc" id="L36">    public static final Msg.Message DUPLICATE_METHOD = Msg.of(&quot;duplicate method&quot;);</span>
-<span class="fc" id="L37">    public static final Msg.Message INCOMPATIBLE_TYPE = Msg.of(&quot;incompatible type&quot;);</span>
-<span class="fc" id="L38">    public static final Msg.Message NOT_FOUND = Msg.of(&quot;not found&quot;);</span>
-<span class="fc" id="L39">    public static final Msg.Message OPTIONAL_TYPE_NOT_SUPPORTED = Msg.of(&quot;&quot;&quot;</span>
+<span class="fc" id="L37">    public static final Msg.Message DUPLICATE_METHOD = Msg.of(&quot;duplicate method&quot;);</span>
+<span class="fc" id="L38">    public static final Msg.Message INCOMPATIBLE_TYPE = Msg.of(&quot;incompatible type&quot;);</span>
+<span class="fc" id="L39">    public static final Msg.Message NOT_FOUND = Msg.of(&quot;not found&quot;);</span>
+<span class="fc" id="L40">    public static final Msg.Message JDBC_INTERFACE_TYPE_PARAMETERS_NOT_SUPPORTED =</span>
+<span class="fc" id="L41">            Msg.of(&quot;Generic JDBC interfaces are not supported; a JDBC interface must not declare type parameters.&quot;);</span>
+<span class="fc" id="L42">    public static final Msg.Message JDBC_METHOD_TYPE_PARAMETERS_NOT_SUPPORTED =</span>
+<span class="fc" id="L43">            Msg.of(&quot;Generic JDBC methods are not supported; a JDBC method must not declare type parameters.&quot;);</span>
+<span class="fc" id="L44">    public static final Msg.Message OPTIONAL_TYPE_NOT_SUPPORTED = Msg.of(&quot;&quot;&quot;</span>
             Optional&lt;T&gt; type not supported.
             See JavaDoc of Optional:
             Optional is primarily intended for use as a method return ...
             &quot;&quot;&quot;);
-<span class="fc" id="L44">    public static final Msg.Message INVALID_RETURN_TYPE = Msg.of(&quot;Invalid return type&quot;);</span>
-<span class="fc" id="L45">    public static final Msg.Message NULLABLE_NOT_SUPPORTED = Msg.of(&quot;@Nullable not supported&quot;);</span>
-<span class="fc" id="L46">    public static final Msg.Message JDBC_CONVERTER_NAME_NOT_SUPPORTED = Msg.of(&quot;@JdbcConverterName not supported&quot;);</span>
-<span class="fc" id="L47">    public static final Msg.Message JAVA_TO_JDBC_RESOLVER_LIST_REQUIRES_COMPONENT_TYPE = Msg.of(&quot;List parameters used with values placeholders must define a component type, e.g. List&lt;String&gt;&quot;);</span>
-<span class="fc" id="L48">    public static final Msg.Message JAVA_TO_JDBC_RESOLVER_VALUES_UNSUPPORTED_TYPES = Msg.of(&quot;Only Array, List or Record are supported&quot;);</span>
-<span class="fc" id="L49">    public static final Msg.Message JAVA_TO_JDBC_RESOLVER_NAMES_UNSUPPORTED_TYPES = Msg.of(&quot;Only records are supported&quot;);</span>
-<span class="fc" id="L50">    public static final Msg.Message JDBC_TO_JAVA_METHOD_MUST_BE_STATIC = Msg.of(&quot;@JdbcToJava method must be static&quot;);</span>
-<span class="fc" id="L51">    public static final Msg.Message JDBC_TO_JAVA_METHOD_MUST_BE_VISIBLE = Msg.of(&quot;@JdbcToJava method must be visible (public/package)&quot;);</span>
-<span class="fc" id="L52">    public static final Msg.Message JDBC_TO_JAVA_METHOD_THROWS_INCOMPATIBLE_EXCEPTIONS = Msg.of(&quot;@JdbcToJava method throws incompatible exceptions&quot;);</span>
-<span class="fc" id="L53">    public static final Msg.Message JDBC_TO_JAVA_MUST_NOT_RETURN_VOID = Msg.of(&quot;@JdbcToJava must not return void&quot;);</span>
-<span class="fc" id="L54">    public static final Msg.Message JDBC_TO_JAVA_METHOD_REQUIRES_PARAMETER = Msg.of(&quot;@JdbcToJava method must have at least one parameter&quot;);</span>
-<span class="fc" id="L55">    public static final Msg.Message JDBC_TO_JAVA_RECORD_CONSTRUCTOR_DOES_NOT_SUPPORT_RESULT_SET = Msg.of(&quot;@JdbcToJava record constructor does not support ResultSet&quot;);</span>
-<span class="fc" id="L56">    public static final Msg.Message JDBC_TO_JAVA_CLASS_CONSTRUCTOR_DOES_NOT_SUPPORT_RESULT_SET_INT = Msg.of(&quot;@JdbcToJava class constructor does not support ResultSet,int&quot;);</span>
-<span class="fc" id="L57">    public static final Msg.Message JDBC_TO_JAVA_FIRST_PARAMETER_MUST_BE_RESULT_SET = Msg.of(&quot;@JdbcToJava first parameter must be ResultSet&quot;);</span>
-<span class="fc" id="L58">    public static final Msg.Message JDBC_TO_JAVA_RESULT_SET_PARAMETER_COUNT_INVALID = Msg.of(&quot;@JdbcToJava with first ResultSet param has to many parameters&quot;);</span>
-<span class="fc" id="L59">    public static final Msg.Message JDBC_TO_JAVA_NAME_MAPPING_UNSUPPORTED_FOR_ONE_PARAM = Msg.of(&quot;@JdbcToJava name mapping not supported for one param&quot;);</span>
-<span class="fc" id="L60">    public static final Msg.Message JDBC_TO_JAVA_NAME_MAPPING_UNSUPPORTED_FOR_RESULT_SET = Msg.of(&quot;@JdbcToJava name mapping not supported for ResultSet&quot;);</span>
-<span class="fc" id="L61">    public static final Msg.Message JDBC_TO_JAVA_NULLABLE_PARAMETER_UNSUPPORTED = Msg.of(&quot;@JdbcToJava nullable param not supported&quot;);</span>
-<span class="fc" id="L62">    public static final Msg.Message JDBC_TO_JAVA_RETURN_TYPE_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;@JdbcToJava method return type must be @NonNull or unspecified&quot;);</span>
-<span class="fc" id="L63">    public static final Msg.Message JDBC_TO_JAVA_FIRST_PARAMETER_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;@JdbcToJava method first parameter must be @NonNull or unspecified&quot;);</span>
-<span class="fc" id="L64">    public static final Msg.Message JDBC_TO_JAVA_SECOND_PARAMETER_MUST_BE_INT = Msg.of(&quot;@JdbcToJava method second parameter must be int&quot;);</span>
-<span class="fc" id="L65">    public static final Msg.Message JDBC_TO_JAVA_RETURN_TYPE_MUST_BE_NULLABLE_OR_UNSPECIFIED = Msg.of(&quot;@JdbcToJava method return type must be a @Nullable or unspecified&quot;);</span>
-<span class="fc" id="L66">    public static final Msg.Message JDBC_TO_JAVA_ANNOTATION_NAME_UNSUPPORTED = Msg.of(&quot;Annotation must not have a name&quot;);</span>
-<span class="fc" id="L67">    public static final Msg.Message JDBC_TO_JAVA_TOO_MANY_ANNOTATIONS = Msg.of(&quot;To many annotations&quot;);</span>
-<span class="fc" id="L68">    public static final Msg.Message JDBC_TO_JAVA_NO_CONSTRUCTOR_FOUND = Msg.of(&quot;no constructor found&quot;);</span>
-<span class="fc" id="L69">    public static final Msg.Message JDBC_TO_JAVA_TOO_MANY_CONSTRUCTORS = Msg.of(&quot;too many constructors were found&quot;);</span>
-<span class="fc" id="L70">    public static final Msg.Message JDBC_TO_JAVA_COLUMN_OBJECT_REQUIRES_COLUMN_CONVERTER = Msg.of(&quot;@JdbcToJava column object requires a column converter&quot;);</span>
-<span class="fc" id="L71">    public static final Msg.Message JDBC_TO_JAVA_ROW_COMPONENT_REQUIRES_COLUMN_CONVERTER = Msg.of(&quot;@JdbcToJava row component requires a column converter&quot;);</span>
-<span class="fc" id="L72">    public static final Msg.Message JAVA_TO_JDBC_METHOD_REQUIRES_ONE_OR_THREE_PARAMETERS = Msg.of(&quot;@JavaToJdbc method must have one or three parameters&quot;);</span>
-<span class="fc" id="L73">    public static final Msg.Message JAVA_TO_JDBC_METHOD_MUST_BE_VISIBLE = Msg.of(&quot;@JavaToJdbc Must be visible (public/package)&quot;);</span>
-<span class="fc" id="L74">    public static final Msg.Message JAVA_TO_JDBC_RETURN_TYPE_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;@JavaToJdbc return type must be @NonNull or unspecified&quot;);</span>
-<span class="fc" id="L75">    public static final Msg.Message JAVA_TO_JDBC_METHOD_MUST_HAVE_NO_PARAMETERS = Msg.of(&quot;@JavaToJdbc method must have no parameters&quot;);</span>
-<span class="fc" id="L76">    public static final Msg.Message JAVA_TO_JDBC_HAS_INCOMPATIBLE_EXCEPTIONS = Msg.of(&quot;has incompatible exceptions&quot;);</span>
-<span class="fc" id="L77">    public static final Msg.Message JAVA_TO_JDBC_RECORD_MUST_HAVE_ONE_COMPONENT = Msg.of(&quot;Record must have exact one component&quot;);</span>
-<span class="fc" id="L78">    public static final Msg.Message JAVA_TO_JDBC_RECORD_COMPONENT_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;Record component must be 'non-null' or 'unspecified'&quot;);</span>
-<span class="fc" id="L79">    public static final Msg.Message JAVA_TO_JDBC_NO_TYPE = Msg.of(&quot;no type&quot;);</span>
-<span class="fc" id="L80">    public static final Msg.Message JAVA_TO_JDBC_FIRST_PARAMETER_MUST_BE_PREPARED_STATEMENT = Msg.of(&quot;first parameter must be a PreparedStatement&quot;);</span>
-<span class="fc" id="L81">    public static final Msg.Message JAVA_TO_JDBC_FIRST_PARAMETER_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;first parameter must be @NonNull or unspecified&quot;);</span>
-<span class="fc" id="L82">    public static final Msg.Message JAVA_TO_JDBC_SECOND_PARAMETER_MUST_BE_INT = Msg.of(&quot;second parameter must be int&quot;);</span>
-<span class="fc" id="L83">    public static final Msg.Message JAVA_TO_JDBC_THIRD_PARAMETER_MUST_BE_NULLABLE_OR_UNSPECIFIED = Msg.of(&quot;third parameter must be @Nullable or unspecified&quot;);</span>
-<span class="fc" id="L84">    public static final Msg.Message JAVA_TO_JDBC_ANNOTATION_NAME_UNSUPPORTED = Msg.of(&quot;Annotation must not have a name&quot;);</span>
-<span class="fc" id="L85">    public static final Msg.Message JAVA_TO_JDBC_TOO_MANY_ANNOTATIONS = Msg.of(&quot;To many annotations&quot;);</span>
+<span class="fc" id="L49">    public static final Msg.Message INVALID_RETURN_TYPE = Msg.of(&quot;Invalid return type&quot;);</span>
+<span class="fc" id="L50">    public static final Msg.Message NULLABLE_NOT_SUPPORTED = Msg.of(&quot;@Nullable not supported&quot;);</span>
+<span class="fc" id="L51">    public static final Msg.Message JDBC_CONVERTER_NAME_NOT_SUPPORTED = Msg.of(&quot;@JdbcConverterName not supported&quot;);</span>
+<span class="fc" id="L52">    public static final Msg.Message JAVA_TO_JDBC_RESOLVER_LIST_REQUIRES_COMPONENT_TYPE = Msg.of(&quot;List parameters used with values placeholders must define a component type, e.g. List&lt;String&gt;&quot;);</span>
+<span class="fc" id="L53">    public static final Msg.Message JAVA_TO_JDBC_RESOLVER_VALUES_UNSUPPORTED_TYPES = Msg.of(&quot;Only Array, List or Record are supported&quot;);</span>
+<span class="fc" id="L54">    public static final Msg.Message JAVA_TO_JDBC_RESOLVER_NAMES_UNSUPPORTED_TYPES = Msg.of(&quot;Only records are supported&quot;);</span>
+<span class="fc" id="L55">    public static final Msg.Message JDBC_TO_JAVA_METHOD_MUST_BE_STATIC = Msg.of(&quot;@JdbcToJava method must be static&quot;);</span>
+<span class="fc" id="L56">    public static final Msg.Message JDBC_TO_JAVA_METHOD_MUST_BE_VISIBLE = Msg.of(&quot;@JdbcToJava method must be visible (public/package)&quot;);</span>
+<span class="fc" id="L57">    public static final Msg.Message JDBC_NATIVE_TARGET_METHOD_MUST_BE_VISIBLE = Msg.of(&quot;@JdbcNative target method must be visible (public/package)&quot;);</span>
+<span class="fc" id="L58">    public static final Msg.Message JDBC_TO_JAVA_METHOD_THROWS_INCOMPATIBLE_EXCEPTIONS = Msg.of(&quot;@JdbcToJava method throws incompatible exceptions&quot;);</span>
+<span class="fc" id="L59">    public static final Msg.Message JDBC_TO_JAVA_MUST_NOT_RETURN_VOID = Msg.of(&quot;@JdbcToJava must not return void&quot;);</span>
+<span class="fc" id="L60">    public static final Msg.Message JDBC_TO_JAVA_METHOD_REQUIRES_PARAMETER = Msg.of(&quot;@JdbcToJava method must have at least one parameter&quot;);</span>
+    @Deprecated
+<span class="fc" id="L62">    public static final Msg.Message JDBC_TO_JAVA_SQL_TYPE_CURRENTLY_NOT_SUPPORTED = Msg.of(&quot;@JdbcToJava sqlType is currently not supported&quot;);</span>
+<span class="fc" id="L63">    public static final Msg.Message JDBC_TO_JAVA_JDBC_TYPE_REQUIRES_ONE_NON_RESULT_SET_PARAMETER = Msg.of(&quot;@JdbcToJava sqlType requires exactly one non-ResultSet parameter&quot;);</span>
+<span class="fc" id="L64">    public static final Msg.Message JDBC_TO_JAVA_RECORD_CONSTRUCTOR_DOES_NOT_SUPPORT_RESULT_SET = Msg.of(&quot;@JdbcToJava record constructor does not support ResultSet&quot;);</span>
+<span class="fc" id="L65">    public static final Msg.Message JDBC_TO_JAVA_CLASS_CONSTRUCTOR_DOES_NOT_SUPPORT_RESULT_SET_INT = Msg.of(&quot;@JdbcToJava class constructor does not support ResultSet,int&quot;);</span>
+<span class="fc" id="L66">    public static final Msg.Message JDBC_TO_JAVA_FIRST_PARAMETER_MUST_BE_RESULT_SET = Msg.of(&quot;@JdbcToJava first parameter must be ResultSet&quot;);</span>
+<span class="fc" id="L67">    public static final Msg.Message JDBC_TO_JAVA_RESULT_SET_PARAMETER_COUNT_INVALID = Msg.of(&quot;@JdbcToJava with first ResultSet param has to many parameters&quot;);</span>
+<span class="fc" id="L68">    public static final Msg.Message JDBC_TO_JAVA_NAME_MAPPING_UNSUPPORTED_FOR_ONE_PARAM = Msg.of(&quot;@JdbcToJava name mapping not supported for one param&quot;);</span>
+<span class="fc" id="L69">    public static final Msg.Message JDBC_TO_JAVA_NAME_MAPPING_UNSUPPORTED_FOR_RESULT_SET = Msg.of(&quot;@JdbcToJava name mapping not supported for ResultSet&quot;);</span>
+<span class="fc" id="L70">    public static final Msg.Message JDBC_TO_JAVA_NULLABLE_PARAMETER_UNSUPPORTED = Msg.of(&quot;@JdbcToJava nullable param not supported&quot;);</span>
+<span class="fc" id="L71">    public static final Msg.Message JDBC_TO_JAVA_RETURN_TYPE_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;@JdbcToJava method return type must be @NonNull or unspecified&quot;);</span>
+<span class="fc" id="L72">    public static final Msg.Message JDBC_TO_JAVA_FIRST_PARAMETER_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;@JdbcToJava method first parameter must be @NonNull or unspecified&quot;);</span>
+<span class="fc" id="L73">    public static final Msg.Message JDBC_TO_JAVA_SECOND_PARAMETER_MUST_BE_INT = Msg.of(&quot;@JdbcToJava method second parameter must be int&quot;);</span>
+<span class="fc" id="L74">    public static final Msg.Message JDBC_TO_JAVA_RETURN_TYPE_MUST_BE_NULLABLE_OR_UNSPECIFIED = Msg.of(&quot;@JdbcToJava method return type must be a @Nullable or unspecified&quot;);</span>
+<span class="fc" id="L75">    public static final Msg.Message JDBC_TO_JAVA_ANNOTATION_NAME_UNSUPPORTED = Msg.of(&quot;Annotation must not have a name&quot;);</span>
+<span class="fc" id="L76">    public static final Msg.Message JDBC_TO_JAVA_TOO_MANY_ANNOTATIONS = Msg.of(&quot;To many annotations&quot;);</span>
+<span class="fc" id="L77">    public static final Msg.Message JDBC_TO_JAVA_NO_CONSTRUCTOR_FOUND = Msg.of(&quot;no constructor found&quot;);</span>
+<span class="fc" id="L78">    public static final Msg.Message JDBC_TO_JAVA_TOO_MANY_CONSTRUCTORS = Msg.of(&quot;too many constructors were found&quot;);</span>
+<span class="fc" id="L79">    public static final Msg.Message JDBC_TO_JAVA_COLUMN_OBJECT_REQUIRES_COLUMN_CONVERTER = Msg.of(&quot;@JdbcToJava column object requires a column converter&quot;);</span>
+<span class="fc" id="L80">    public static final Msg.Message JDBC_TO_JAVA_SQL_TYPE_REQUIRES_ONE_VALUE_CONVERTER = Msg.of(&quot;@JdbcToJava sqlType requires a one-value column converter&quot;);</span>
+<span class="fc" id="L81">    public static final Msg.Message JDBC_TO_JAVA_ROW_COMPONENT_REQUIRES_COLUMN_CONVERTER = Msg.of(&quot;@JdbcToJava row component requires a column converter&quot;);</span>
+<span class="fc" id="L82">    public static final Msg.Message JAVA_TO_JDBC_METHOD_REQUIRES_ONE_OR_THREE_PARAMETERS = Msg.of(&quot;@JavaToJdbc method must have one or three parameters&quot;);</span>
+<span class="fc" id="L83">    public static final Msg.Message JAVA_TO_JDBC_METHOD_MUST_BE_VISIBLE = Msg.of(&quot;@JavaToJdbc Must be visible (public/package)&quot;);</span>
+<span class="fc" id="L84">    public static final Msg.Message JAVA_TO_JDBC_RETURN_TYPE_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;@JavaToJdbc return type must be @NonNull or unspecified&quot;);</span>
+<span class="fc" id="L85">    public static final Msg.Message JAVA_TO_JDBC_METHOD_MUST_HAVE_NO_PARAMETERS = Msg.of(&quot;@JavaToJdbc method must have no parameters&quot;);</span>
+<span class="fc" id="L86">    public static final Msg.Message JAVA_TO_JDBC_HAS_INCOMPATIBLE_EXCEPTIONS = Msg.of(&quot;has incompatible exceptions&quot;);</span>
+<span class="fc" id="L87">    public static final Msg.Message JAVA_TO_JDBC_RECORD_MUST_HAVE_ONE_COMPONENT = Msg.of(&quot;Record must have exact one component&quot;);</span>
+<span class="fc" id="L88">    public static final Msg.Message JAVA_TO_JDBC_RECORD_COMPONENT_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;Record component must be 'non-null' or 'unspecified'&quot;);</span>
+<span class="fc" id="L89">    public static final Msg.Message JAVA_TO_JDBC_NO_TYPE = Msg.of(&quot;no type&quot;);</span>
+<span class="fc" id="L90">    public static final Msg.Message JAVA_TO_JDBC_FIRST_PARAMETER_MUST_BE_PREPARED_STATEMENT = Msg.of(&quot;first parameter must be a PreparedStatement&quot;);</span>
+<span class="fc" id="L91">    public static final Msg.Message JAVA_TO_JDBC_FIRST_PARAMETER_MUST_BE_NON_NULL_OR_UNSPECIFIED = Msg.of(&quot;first parameter must be @NonNull or unspecified&quot;);</span>
+<span class="fc" id="L92">    public static final Msg.Message JAVA_TO_JDBC_SECOND_PARAMETER_MUST_BE_INT = Msg.of(&quot;second parameter must be int&quot;);</span>
+<span class="fc" id="L93">    public static final Msg.Message JAVA_TO_JDBC_THIRD_PARAMETER_MUST_BE_NULLABLE_OR_UNSPECIFIED = Msg.of(&quot;third parameter must be @Nullable or unspecified&quot;);</span>
+<span class="fc" id="L94">    public static final Msg.Message JAVA_TO_JDBC_ANNOTATION_NAME_UNSUPPORTED = Msg.of(&quot;Annotation must not have a name&quot;);</span>
+<span class="fc" id="L95">    public static final Msg.Message JAVA_TO_JDBC_TOO_MANY_ANNOTATIONS = Msg.of(&quot;To many annotations&quot;);</span>
 
     public static Msg.Message jdbcToJavaParameterOptionalInvalid(CharSequence parameter) {
-<span class="fc" id="L88">        return Msg.of(&quot;@JdbcToJava parameter &quot; + parameter + &quot; invalid Optional&quot;);</span>
+<span class="fc" id="L98">        return Msg.of(&quot;@JdbcToJava parameter &quot; + parameter + &quot; invalid Optional&quot;);</span>
     }
 
     public static Msg.Message jdbcToJavaElementTypeNotFound(TypeMirror type) {
-<span class="fc" id="L92">        return Msg.of(&quot;@JavaToJdbc element type not found for &quot; + type);</span>
+<span class="fc" id="L102">        return Msg.of(&quot;@JdbcToJava element type not found for &quot; + type);</span>
     }
 
     public static Msg.Message jdbcToJavaAnnotationHasWrongType(TypeMirror type) {
-<span class="fc" id="L96">        return Msg.of(&quot;Annotation has wrong type: &quot; + type);</span>
+<span class="fc" id="L106">        return Msg.of(&quot;Annotation has wrong type: &quot; + type);</span>
     }
 
     public static Msg.Message javaToJdbcElementTypeNotFound(TypeMirror type) {
-<span class="nc" id="L100">        return Msg.of(&quot;@JavaToJdbc element type not found for &quot; + type);</span>
+<span class="fc" id="L110">        return Msg.of(&quot;@JavaToJdbc element type not found for &quot; + type);</span>
     }
 
     public static Msg.Message javaToJdbcAnnotationHasWrongType(TypeMirror type) {
-<span class="fc" id="L104">        return Msg.of(&quot;Annotation has wrong type: &quot; + type);</span>
+<span class="fc" id="L114">        return Msg.of(&quot;Annotation has wrong type: &quot; + type);</span>
     }
 
     public static Msg.Message annotationValueMustNotBeBlank(CharSequence annotation) {
-<span class="fc" id="L108">        return Msg.of(annotation + &quot; value must not be blank&quot;);</span>
+<span class="fc" id="L118">        return Msg.of(annotation + &quot; value must not be blank&quot;);</span>
     }
 
     public static Msg.Message invalidJdbcName(CharSequence name) {
-<span class="fc" id="L112">        return Msg.of(&quot;@JdbcName value '&quot; + name + &quot;' is not a valid SQL name&quot;);</span>
+<span class="fc" id="L122">        return Msg.of(&quot;@JdbcName value '&quot; + name + &quot;' is not a valid SQL name&quot;);</span>
     }
 
     public static Msg.Message converter(String text) {
-<span class="fc" id="L116">        return Msg.of(text);</span>
+<span class="fc" id="L126">        return Msg.of(text);</span>
     }
 
     public static Msg.Message cycle(List&lt;?&gt; cycle) {
-<span class="fc" id="L120">        return Msg.of(&quot;generate cycle: &quot; + cycle);</span>
+<span class="fc" id="L130">        return Msg.of(&quot;generate cycle: &quot; + cycle);</span>
     }
 
     // ------------------------------------------------------------------------
 
     public static Msg.Message ambiguous(Set&lt;StoreID&gt; ambiguous) {
-<span class="fc" id="L126">        return Msg.of(&quot;Ambiguous converter: &quot; + toSortedList(ambiguous, StoreID::toString));</span>
+<span class="fc" id="L136">        return Msg.of(&quot;Ambiguous converter: &quot; + toSortedList(ambiguous, StoreID::toString));</span>
     }
 
     // ------------------------------------------------------------------------
 
     protected static Msg.Message invalidParam(CharSequence name, String type, Msg.Messages messages) {
-<span class="fc" id="L132">        var sb = new StringBuilder();</span>
-<span class="fc" id="L133">        sb.append(&quot;Java method parameter '&quot;).append(name);</span>
-<span class="fc" id="L134">        sb.append(&quot;': type '&quot;).append(type);</span>
-<span class="fc" id="L135">        sb.append(&quot;' must be supported as SQL placeholder, but &quot;);</span>
-<span class="fc" id="L136">        messages.join(sb, &quot;, &quot;);</span>
-<span class="fc" id="L137">        return Msg.of(sb.toString());</span>
+<span class="fc" id="L142">        var sb = new StringBuilder();</span>
+<span class="fc" id="L143">        sb.append(&quot;Java method parameter '&quot;).append(name);</span>
+<span class="fc" id="L144">        sb.append(&quot;': type '&quot;).append(type);</span>
+<span class="fc" id="L145">        sb.append(&quot;' must be supported as SQL placeholder, but &quot;);</span>
+<span class="fc" id="L146">        messages.join(sb, &quot;, &quot;);</span>
+<span class="fc" id="L147">        return Msg.of(sb.toString());</span>
     }
 
     public static Msg.Message invalidParam(VariableElement param, Msg.Messages messages) {
-<span class="fc" id="L141">        return invalidParam(param.getSimpleName(), searchKey(param.asType()), messages);</span>
+<span class="fc" id="L151">        return invalidParam(param.getSimpleName(), searchKey(param.asType()), messages);</span>
     }
 
     public static Msg.Message jdbcMethodRequiresEntryPointAnnotation() {
-<span class="fc" id="L145">        return Msg.of(&quot;Java method: must have one of @JdbcNative, @JdbcSelect, @JdbcUpdate or @JdbcBatchUpdate&quot;);</span>
+<span class="fc" id="L155">        return Msg.of(&quot;Java method: must have one of @JdbcBatchUpdate, @JdbcCall, @JdbcNative, @JdbcSelect or @JdbcUpdate&quot;);</span>
+    }
+
+    public static Msg.Message inheritedJdbcMethodNotSupported(ExecutableElement method) {
+<span class="fc" id="L159">        return Msg.of(&quot;Inherited Java method '&quot; + method.getEnclosingElement() + &quot;.&quot;</span>
+                + method + &quot;' is not supported&quot;);
     }
 
     public static Msg.Message jdbcMethodRequiresSingleEntryPointAnnotation() {
-<span class="fc" id="L149">        return Msg.of(&quot;Java method: must not have multiple entry-point annotations&quot;);</span>
+<span class="fc" id="L164">        return Msg.of(&quot;Java method: must not have multiple entry-point annotations&quot;);</span>
     }
 
     public static Msg.Message jdbcSelectRequiresSqlString() {
-<span class="fc" id="L153">        return Msg.of(&quot;Java method: @JdbcSelect requires a SQL string&quot;);</span>
+<span class="fc" id="L168">        return Msg.of(&quot;Java method: @JdbcSelect requires a SQL string&quot;);</span>
     }
 
     public static Msg.Message jdbcUpdateRequiresSqlString() {
-<span class="fc" id="L157">        return Msg.of(&quot;Java method: @JdbcUpdate requires a SQL string&quot;);</span>
+<span class="fc" id="L172">        return Msg.of(&quot;Java method: @JdbcUpdate requires a SQL string&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallRequiresSqlString() {
+<span class="fc" id="L176">        return Msg.of(&quot;Java method: @JdbcCall requires a SQL string&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallPlaceholderExpansionUnsupported(String name) {
+<span class="fc" id="L180">        return Msg.of(&quot;Callable SQL placeholder ':&quot; + name + &quot;' must not use expansion&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallPlaceholderUnnamedUnsupported() {
+<span class="fc" id="L184">        return Msg.of(&quot;Callable SQL must not use unnamed '?' placeholders&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallPlaceholderNotFound(String name) {
+<span class="fc" id="L188">        return Msg.of(&quot;Callable SQL placeholder ':&quot; + name + &quot;' has no matching input or output&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallOutputPlaceholderMissing(String name) {
+<span class="fc" id="L192">        return Msg.of(&quot;Java method: output '&quot; + name + &quot;' has no SQL placeholder&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallOutputPlaceholderRepeated(String name) {
+<span class="fc" id="L196">        return Msg.of(&quot;Java method: output '&quot; + name + &quot;' has more than one SQL placeholder&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallOutputConverterSqlTypeUnsupported(int sqlType) {
+<span class="fc" id="L200">        return Msg.of(&quot;Java method: JDBC-to-Java converter SQL type '&quot; + sqlType + &quot;' is not supported&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallRequiresSupportedReturnType(JdbcTypeMirror&lt;?&gt; returnType) {
+<span class="fc" id="L204">        return jdbcCallRequiresSupportedReturnType(returnType.asType().toString());</span>
+    }
+
+    public static Msg.Message jdbcCallRequiresSupportedReturnType(CharSequence returnType) {
+<span class="fc" id="L208">        return Msg.of(&quot;Java method return value: @JdbcCall requires void, a supported value, record, or JdbcRow &quot;</span>
+                + &quot;return type, but found '&quot; + returnType + &quot;'&quot;);
+    }
+
+    public static Msg.Message jdbcCallScalarOutputRequiresJdbcName() {
+<span class="fc" id="L213">        return Msg.of(&quot;Java method: scalar @JdbcCall return type requires @JdbcName&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallMultipleOutputsRequireNonNullReturnType() {
+<span class="fc" id="L217">        return Msg.of(&quot;Java method: @JdbcCall multiple-output return type must be non-null&quot;);</span>
+    }
+
+    public static Msg.Message jdbcCallOutputConverterRequiresResultSet() {
+<span class="fc" id="L221">        return Msg.of(&quot;Java method: @JdbcCall output converter must not require ResultSet&quot;);</span>
     }
 
     public static Msg.Message javaMethodHasUnusedAnnotations(Set&lt;JavaAnnoType&lt;?&gt;&gt; annotations) {
-<span class="fc" id="L161">        return Msg.of(&quot;Java method: has unused annotations: &quot; + toSortedList(annotations, JavaAnnoType::toString));</span>
+<span class="fc" id="L225">        return Msg.of(&quot;Java method: has unused annotations: &quot; + toSortedList(annotations, JavaAnnoType::toString));</span>
     }
 
     public static Msg.Message javaMethodHasUnusedAnnotations(Class&lt;?&gt;... annotations) {
-<span class="fc" id="L165">        return Msg.of(&quot;Java method: has unused annotations: &quot; + Arrays.stream(annotations).map(Class::getCanonicalName).toList());</span>
+<span class="fc" id="L229">        return Msg.of(&quot;Java method: has unused annotations: &quot; + Arrays.stream(annotations).map(Class::getCanonicalName).toList());</span>
     }
 
     public static Msg.Message unusedAnnotations(TypeElement element, Set&lt;JavaAnnoType&lt;?&gt;&gt; annoSet) {
-<span class="fc" id="L169">        return Msg.of(&quot;Type &quot; + element.getQualifiedName() + &quot; has unused annotations: &quot; + toSortedList(annoSet, JavaAnnoType::toString));</span>
+<span class="fc" id="L233">        return Msg.of(&quot;Type &quot; + element.getQualifiedName() + &quot; has unused annotations: &quot; + toSortedList(annoSet, JavaAnnoType::toString));</span>
     }
 
     public static Msg.Message javaMethodParameterHasUnusedAnnotations(CharSequence parameter, Set&lt;JavaAnnoType&lt;?&gt;&gt; annotations) {
-<span class="fc" id="L173">        return Msg.of(&quot;Java method parameter '&quot; + parameter + &quot;': has unused annotations: &quot; + toSortedList(annotations, JavaAnnoType::toString));</span>
+<span class="fc" id="L237">        return Msg.of(&quot;Java method parameter '&quot; + parameter + &quot;': has unused annotations: &quot; + toSortedList(annotations, JavaAnnoType::toString));</span>
     }
 
     private static &lt;T&gt; String toSortedList(Set&lt;T&gt; annotations, Function&lt;T, String&gt; func) {
-<span class="fc" id="L177">        return annotations.stream().map(func).sorted().toList().toString();</span>
+<span class="fc" id="L241">        return annotations.stream().map(func).sorted().toList().toString();</span>
     }
 
     public static Msg.Message javaMethodParameterJdbcConverterNameUnsupportedForSqlPlaceholder(CharSequence parameter,
                                                                                                CharSequence placeholder,
                                                                                                CharSequence shape) {
-<span class="fc" id="L183">        return Msg.of(&quot;Java method parameter '&quot; + parameter + &quot;': @JdbcConverterName is not supported for SQL &quot;</span>
+<span class="fc" id="L247">        return Msg.of(&quot;Java method parameter '&quot; + parameter + &quot;': @JdbcConverterName is not supported for SQL &quot;</span>
                 + shape + &quot; placeholder '&quot; + placeholder + &quot;'&quot;);
     }
 
     public static Msg.Message sqlPlaceholderUnnamedUnsupported() {
-<span class="fc" id="L188">        return Msg.of(&quot;SQL placeholder: unnamed placeholders are not supported&quot;);</span>
+<span class="fc" id="L252">        return Msg.of(&quot;SQL placeholder: unnamed placeholders are not supported&quot;);</span>
     }
 
     public static Msg.Message sqlPlaceholderPathUnsupported(CharSequence placeholder) {
-<span class="fc" id="L192">        return Msg.of(&quot;SQL placeholder '&quot; + placeholder + &quot;': paths are not supported&quot;);</span>
+<span class="fc" id="L256">        return Msg.of(&quot;SQL placeholder '&quot; + placeholder + &quot;': paths are not supported&quot;);</span>
     }
 
     public static Msg.Message sqlPlaceholderNotFound(CharSequence placeholder) {
-<span class="fc" id="L196">        return Msg.of(&quot;SQL placeholder '&quot; + placeholder + &quot;': not found in method parameter list&quot;);</span>
+<span class="fc" id="L260">        return Msg.of(&quot;SQL placeholder '&quot; + placeholder + &quot;': not found in method parameter list&quot;);</span>
     }
 
     public static Msg.Message sqlPlaceholderUsedWithDifferentShapes(CharSequence placeholder,
                                                                     CharSequence first,
                                                                     CharSequence second) {
-<span class="fc" id="L202">        return Msg.of(&quot;SQL placeholder '&quot; + placeholder + &quot;': must not be used as '&quot; + first</span>
+<span class="fc" id="L266">        return Msg.of(&quot;SQL placeholder '&quot; + placeholder + &quot;': must not be used as '&quot; + first</span>
                 + &quot;' and '&quot; + second + &quot;' placeholder&quot;);
     }
 
     public static Msg.Message sqlPlaceholderCountExceedsLimit(int count, int limit) {
-<span class="nc" id="L207">        return Msg.of(&quot;SQL placeholder count exceeds @JdbcConfig.maxTotalPlaceholders: &quot; + count + &quot; &gt; &quot; + limit);</span>
+<span class="nc" id="L271">        return Msg.of(&quot;SQL placeholder count exceeds @JdbcConfig.maxTotalPlaceholders: &quot; + count + &quot; &gt; &quot; + limit);</span>
     }
 
     // ------------------------------------------------------------------------
 
     public static Msg.Message invalidSqlParameterConverter(String sql, SourceDV component, Msg.Messages messages) {
-<span class="fc" id="L213">        return new InvalidParamConverter(sql, component, messages);</span>
+<span class="fc" id="L277">        return new InvalidParamConverter(sql, component, messages);</span>
+    }
+
+    public static Msg.Message sqlPlaceholderCollectionRequiresExpansion(String placeholder,
+                                                                        VariableElement parameter) {
+<span class="fc" id="L282">        return Msg.of(&quot;SQL placeholder ':&quot; + placeholder + &quot;': parameter '&quot; + parameter.getSimpleName()</span>
+<span class="fc" id="L283">                + &quot;' has collection type '&quot; + parameter.asType() + &quot;'. Use ':&quot; + placeholder</span>
+                + &quot;.*' to expand each collection element into one JDBC parameter.&quot;);
     }
 
     public static Msg.Message invalidJdbcToJavaResultConverter(SourceDV method,
                                                                SearchKey searchKey,
                                                                Msg.Messages messages) {
-<span class="fc" id="L219">        return new InvalidReturnConverter(method, searchKey, messages);</span>
+<span class="fc" id="L290">        return new InvalidReturnConverter(method, searchKey, messages);</span>
     }
 
     private static String renderInvalidSqlParameterConverter(String sql, SourceDV component, Msg.Messages messages) {
-<span class="fc" id="L223">        var sb = new StringBuilder();</span>
-<span class="fc" id="L224">        sb.append(&quot;sql......: ':&quot;).append(sql);</span>
-<span class="fc" id="L225">        sb.append(&quot;'\nparameter: &quot;).append(component);</span>
-<span class="fc" id="L226">        sb.append('\n');</span>
-<span class="fc" id="L227">        appendMessages(sb, messages);</span>
-<span class="fc" id="L228">        return sb.toString();</span>
+<span class="fc" id="L294">        var sb = new StringBuilder();</span>
+<span class="fc" id="L295">        sb.append(&quot;sql......: ':&quot;).append(sql);</span>
+<span class="fc" id="L296">        sb.append(&quot;'\nparameter: &quot;).append(component);</span>
+<span class="fc" id="L297">        sb.append('\n');</span>
+<span class="fc" id="L298">        appendMessages(sb, messages);</span>
+<span class="fc" id="L299">        return sb.toString();</span>
     }
 
     private static String renderInvalidJdbcToJavaResultConverter(SearchKey searchKey,
                                                                  Msg.Messages messages) {
-<span class="fc" id="L233">        var sb = new StringBuilder();</span>
-<span class="fc" id="L234">        sb.append(&quot;return...: &quot;).append(searchKey.toStoreId()).append('\n');</span>
-<span class="fc" id="L235">        appendMessages(sb, messages);</span>
-<span class="fc" id="L236">        return sb.toString();</span>
+<span class="fc" id="L304">        var sb = new StringBuilder();</span>
+<span class="fc" id="L305">        sb.append(&quot;return...: &quot;).append(searchKey.toStoreId()).append('\n');</span>
+<span class="fc" id="L306">        appendMessages(sb, messages);</span>
+<span class="fc" id="L307">        return sb.toString();</span>
     }
 
     private static void appendMessages(StringBuilder sb, Msg.Messages messages) {
-<span class="fc" id="L240">        var first = true;</span>
-<span class="fc bfc" id="L241" title="All 2 branches covered.">        for (var message : messages) {</span>
-<span class="fc bfc" id="L242" title="All 2 branches covered.">            if (first) {</span>
-<span class="fc" id="L243">                first = false;</span>
+<span class="fc" id="L311">        var first = true;</span>
+<span class="fc bfc" id="L312" title="All 2 branches covered.">        for (var message : messages) {</span>
+<span class="fc bfc" id="L313" title="All 2 branches covered.">            if (first) {</span>
+<span class="fc" id="L314">                first = false;</span>
             } else {
-<span class="fc" id="L245">                sb.append('\n');</span>
+<span class="fc" id="L316">                sb.append('\n');</span>
             }
-<span class="fc" id="L247">            sb.append(message.text());</span>
-<span class="fc" id="L248">        }</span>
-<span class="fc" id="L249">    }</span>
+<span class="fc" id="L318">            sb.append(message.text());</span>
+<span class="fc" id="L319">        }</span>
+<span class="fc" id="L320">    }</span>
 
     // @JdbcNative ------------------------------------------------------------
 
     public static Msg.Message jdbcNativeRequiresMatchingStaticMethod(TypeElement targetClass,
                                                                      CharSequence targetMethod) {
-<span class="fc" id="L255">        return jdbcNativeRequiresMatchingStaticMethod(targetClass.toString(), targetMethod);</span>
+<span class="fc" id="L326">        return jdbcNativeRequiresMatchingStaticMethod(targetClass.toString(), targetMethod);</span>
     }
 
     public static Msg.Message jdbcNativeRequiresMatchingStaticMethod(CharSequence targetClass,
                                                                      CharSequence targetMethod) {
-<span class="fc" id="L260">        return Msg.of(&quot;Java method: @JdbcNative requires a matching static method '&quot; + targetMethod</span>
+<span class="fc" id="L331">        return Msg.of(&quot;Java method: @JdbcNative requires a matching static method '&quot; + targetMethod</span>
                 + &quot;' in '&quot; + targetClass + &quot;' with java.sql.Connection as first parameter&quot;);
     }
 
     public static Msg.Message jdbcNativeRequiresCallableStaticMethod(TypeElement targetClass,
                                                                      CharSequence targetMethod) {
-<span class="fc" id="L266">        return jdbcNativeRequiresCallableStaticMethod(targetClass.toString(), targetMethod);</span>
+<span class="fc" id="L337">        return jdbcNativeRequiresCallableStaticMethod(targetClass.toString(), targetMethod);</span>
     }
 
     public static Msg.Message jdbcNativeRequiresCallableStaticMethod(CharSequence targetClass,
                                                                      CharSequence targetMethod) {
-<span class="fc" id="L271">        return Msg.of(&quot;Java method: @JdbcNative requires static method '&quot; + targetMethod + &quot;' in '&quot;</span>
+<span class="fc" id="L342">        return Msg.of(&quot;Java method: @JdbcNative requires static method '&quot; + targetMethod + &quot;' in '&quot;</span>
                 + targetClass + &quot;' to match return type, parameters, nullness and checked exceptions&quot;);
     }
 
     public static Msg.Message returnTypeNotAssignable(CharSequence targetReturnType,
                                                       CharSequence sourceReturnType) {
-<span class="fc" id="L277">        return Msg.of(&quot;Return type '&quot; + targetReturnType + &quot;' is not assignable to '&quot; + sourceReturnType + &quot;'&quot;);</span>
+<span class="fc" id="L348">        return Msg.of(&quot;Return type '&quot; + targetReturnType + &quot;' is not assignable to '&quot; + sourceReturnType + &quot;'&quot;);</span>
+    }
+
+    public static Msg.Message jdbcNativeTargetMustReturnVoid(CharSequence targetReturnType) {
+<span class="fc" id="L352">        return Msg.of(&quot;@JdbcNative target method must return void because the annotated method returns void, but found '&quot;</span>
+                + targetReturnType + &quot;'&quot;);
     }
 
     public static Msg.Message returnTypeNullnessMismatch(OptionalFlag targetFlag,
                                                          OptionalFlag sourceFlag) {
-<span class="fc" id="L282">        return Msg.of(&quot;Return type mismatch. target: '&quot; + targetFlag + &quot;' is not compatible with source: '&quot; + sourceFlag + &quot;'&quot;);</span>
+<span class="fc" id="L358">        return Msg.of(&quot;Return type mismatch. target: '&quot; + targetFlag + &quot;' is not compatible with source: '&quot; + sourceFlag + &quot;'&quot;);</span>
     }
 
     public static Msg.Message javaMethodsHaveDifferentParameter() {
-<span class="fc" id="L286">        return Msg.of(&quot;have different parameter&quot;);</span>
+<span class="fc" id="L362">        return Msg.of(&quot;have different parameter&quot;);</span>
     }
 
     public static Msg.Message firstParameterMustBeConnection() {
-<span class="fc" id="L290">        return Msg.of(&quot;first param must have type 'java.sql.Connection'&quot;);</span>
+<span class="fc" id="L366">        return Msg.of(&quot;first param must have type 'java.sql.Connection'&quot;);</span>
     }
 
     public static Msg.Message sourceParamOptionalTypeNotSupported(int pos) {
-<span class="fc" id="L294">        return Msg.of(&quot;Source param at pos &quot; + pos + &quot;: &quot; + OPTIONAL_TYPE_NOT_SUPPORTED);</span>
+<span class="fc" id="L370">        return Msg.of(&quot;Source param at pos &quot; + pos + &quot;: &quot; + OPTIONAL_TYPE_NOT_SUPPORTED);</span>
     }
 
     public static Msg.Message targetParamOptionalTypeNotSupported(int pos) {
-<span class="fc" id="L298">        return Msg.of(&quot;Target param at pos &quot; + pos + &quot;: &quot; + OPTIONAL_TYPE_NOT_SUPPORTED);</span>
+<span class="fc" id="L374">        return Msg.of(&quot;Target param at pos &quot; + pos + &quot;: &quot; + OPTIONAL_TYPE_NOT_SUPPORTED);</span>
     }
 
     public static Msg.Message paramNullnessMismatch(int pos,
                                                     OptionalFlag sourceFlag,
                                                     OptionalFlag targetFlag) {
-<span class="fc" id="L304">        return Msg.of(&quot;Param mismatch optional at pos &quot; + pos + &quot;: '&quot; + sourceFlag + &quot;' is not compatible with '&quot; + targetFlag + &quot;'&quot;);</span>
+<span class="fc" id="L380">        return Msg.of(&quot;Param mismatch optional at pos &quot; + pos + &quot;: '&quot; + sourceFlag + &quot;' is not compatible with '&quot; + targetFlag + &quot;'&quot;);</span>
     }
 
     public static Msg.Message paramTypeMismatch(int pos,
                                                 CharSequence sourceType,
                                                 CharSequence targetType) {
-<span class="fc" id="L310">        return Msg.of(&quot;Param mismatch type at pos &quot; + pos + &quot;: '&quot; + sourceType + &quot;' is not same type '&quot; + targetType + &quot;'&quot;);</span>
+<span class="fc" id="L386">        return Msg.of(&quot;Param mismatch type at pos &quot; + pos + &quot;: '&quot; + sourceType + &quot;' is not same type '&quot; + targetType + &quot;'&quot;);</span>
     }
 
     public static Msg.Message exceptionNotCompatible(CharSequence exception) {
-<span class="fc" id="L314">        return Msg.of(&quot;Exception not compatible: &quot; + exception);</span>
+<span class="fc" id="L390">        return Msg.of(&quot;Exception not compatible: &quot; + exception);</span>
     }
 
     // @JdbcSelect ------------------------------------------------------------
 
     public static Msg.Message jdbcSelectRequiresSupportedReturnType(JdbcTypeMirror&lt;?&gt; returnType) {
-<span class="fc" id="L320">        return jdbcSelectRequiresSupportedReturnType(returnType.asType().toString());</span>
+<span class="fc" id="L396">        return jdbcSelectRequiresSupportedReturnType(returnType.asType().toString());</span>
     }
 
     public static Msg.Message jdbcSelectRequiresSupportedReturnType(CharSequence returnType) {
-<span class="fc" id="L324">        return Msg.of(&quot;Java method return value: @JdbcSelect requires a supported value, row, list, stream, &quot;</span>
+<span class="fc" id="L400">        return Msg.of(&quot;Java method return value: @JdbcSelect requires a supported value, row, list, stream, &quot;</span>
                 + &quot;JdbcIterable, JdbcResultSet, or JdbcRow return type, but found '&quot;
                 + returnType + &quot;'&quot;);
     }
 
+    public static Msg.Message jdbcSelectArrayReturnTypeRequiresConverter(CharSequence returnType) {
+<span class="fc" id="L406">        return Msg.of(&quot;Java method return value: array return type '&quot; + returnType</span>
+                + &quot;' is a single-value return type and requires a matching JDBC-to-Java converter; &quot;
+                + &quot;use List&lt;T&gt;, Stream&lt;T&gt;, JdbcIterable&lt;T&gt;, or JdbcResultSet&lt;T&gt; to map multiple rows&quot;);
+    }
+
     public static Msg.Message jdbcSelectJdbcRowRequiresNullableOrOptional(OptionalFlag optional) {
-<span class="fc" id="L330">        return Msg.of(&quot;Java method return value: @JdbcSelect with JdbcRow&lt;T&gt; requires a nullable or &quot;</span>
+<span class="fc" id="L412">        return Msg.of(&quot;Java method return value: @JdbcSelect with JdbcRow&lt;T&gt; requires a nullable or &quot;</span>
                 + &quot;Optional&lt;JdbcRow&lt;T&gt;&gt; return type, but found '&quot; + optional + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcSelectNoRowsReturnNullRequiresNullableOrOptional(OptionalFlag optional) {
-<span class="fc" id="L335">        return Msg.of(&quot;Java method return value: @JdbcNoRows(RETURN_NULL) requires a nullable or Optional&lt;T&gt; &quot;</span>
+<span class="fc" id="L417">        return Msg.of(&quot;Java method return value: @JdbcNoRows(RETURN_NULL) requires a nullable or Optional&lt;T&gt; &quot;</span>
                 + &quot;return type, but found '&quot; + optional + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcSelectNoRowsReturnNullRequiresNullable(OptionalFlag optional) {
-<span class="fc" id="L340">        return Msg.of(&quot;Java method return value: @JdbcNoRows(RETURN_NULL) requires a nullable return type, &quot;</span>
+<span class="fc" id="L422">        return Msg.of(&quot;Java method return value: @JdbcNoRows(RETURN_NULL) requires a nullable return type, &quot;</span>
                 + &quot;but found '&quot; + optional + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcSelectRequiresNonNullOrUnspecifiedReturnType(OptionalFlag optional) {
-<span class="fc" id="L345">        return Msg.of(&quot;Java method return value: @JdbcSelect requires a non-null or unspecified return type &quot;</span>
+<span class="fc" id="L427">        return Msg.of(&quot;Java method return value: @JdbcSelect requires a non-null or unspecified return type &quot;</span>
                 + &quot;for list, stream, JdbcIterable, or JdbcResultSet return types, but found '&quot; + optional + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcSelectRequiresNonNullOrUnspecifiedRowReturnComponent(OptionalFlag optional) {
-<span class="fc" id="L350">        return Msg.of(&quot;Java method return value: row return components must be unspecified or non-null, &quot;</span>
+<span class="fc" id="L432">        return Msg.of(&quot;Java method return value: row return components must be unspecified or non-null, &quot;</span>
                 + &quot;but found '&quot; + optional + &quot;'&quot;);
     }
 
-<span class="fc" id="L354">    public static final Msg.Message JDBC_SELECT_REQUIRES_RESULT_SET_TYPE_AND_CONCURRENCY = Msg.of(</span>
+<span class="fc" id="L436">    public static final Msg.Message JDBC_SELECT_REQUIRES_RESULT_SET_TYPE_AND_CONCURRENCY = Msg.of(</span>
             &quot;Java method: @JdbcResultSetType and @JdbcResultSetConcurrency must be configured together&quot;);
 
     // @JdbcUpdate ------------------------------------------------------------
 
     public static Msg.Message jdbcUpdateRequiresSupportedReturnType(JdbcTypeMirror&lt;?&gt; returnType) {
-<span class="fc" id="L360">        return jdbcUpdateRequiresSupportedReturnType(returnType.asType().toString());</span>
+<span class="fc" id="L442">        return jdbcUpdateRequiresSupportedReturnType(returnType.asType().toString());</span>
     }
 
     public static Msg.Message jdbcUpdateRequiresSupportedReturnType(CharSequence returnType) {
-<span class="fc" id="L364">        return Msg.of(&quot;Java method return value: @JdbcUpdate requires void, int, boolean, or generated values &quot;</span>
+<span class="fc" id="L446">        return Msg.of(&quot;Java method return value: @JdbcUpdate requires void, int, boolean, or generated values &quot;</span>
                 + &quot;with a supported return type, but found '&quot; + returnType + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcUpdateGeneratedValuesRequiresSupportedReturnType(JdbcTypeMirror&lt;?&gt; returnType) {
-<span class="fc" id="L369">        return jdbcUpdateGeneratedValuesRequiresSupportedReturnType(returnType.asType().toString());</span>
+<span class="fc" id="L451">        return jdbcUpdateGeneratedValuesRequiresSupportedReturnType(returnType.asType().toString());</span>
     }
 
     public static Msg.Message jdbcUpdateGeneratedValuesRequiresSupportedReturnType(CharSequence returnType) {
-<span class="fc" id="L373">        return Msg.of(&quot;Java method return value: @JdbcUpdate generated values require a supported value or row &quot;</span>
+<span class="fc" id="L455">        return Msg.of(&quot;Java method return value: @JdbcUpdate generated values require a supported value or row &quot;</span>
                 + &quot;return type, but found '&quot; + returnType + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcUpdateGeneratedValuesRequiresNonNullOrUnspecifiedReturnType(OptionalFlag optional) {
-<span class="fc" id="L378">        return Msg.of(&quot;Java method return value: @JdbcUpdate generated values require a non-null or unspecified &quot;</span>
+<span class="fc" id="L460">        return Msg.of(&quot;Java method return value: @JdbcUpdate generated values require a non-null or unspecified &quot;</span>
                 + &quot;return type, but found '&quot; + optional + &quot;'&quot;);
+    }
+
+<span class="fc" id="L464">    public static final Msg.Message JDBC_UPDATE_RETURN_GENERATED_COLUMNS_REQUIRES_NONE =</span>
+<span class="fc" id="L465">            Msg.of(&quot;@JdbcUpdate returnGeneratedColumns requires returnGeneratedValues = NONE&quot;);</span>
+
+    public static Msg.Message jdbcUpdateReturnGeneratedColumnMustNotBeBlank(int index) {
+<span class="fc" id="L468">        return Msg.of(&quot;@JdbcUpdate returnGeneratedColumns entry &quot; + index + &quot; must not be blank&quot;);</span>
+    }
+
+    public static Msg.Message jdbcUpdateReturnGeneratedColumnMustBeUnique(String name) {
+<span class="fc" id="L472">        return Msg.of(&quot;@JdbcUpdate returnGeneratedColumns entry '&quot; + name + &quot;' must be unique&quot;);</span>
+    }
+
+    public static Msg.Message jdbcUpdateReturnGeneratedColumnsScalarRequiresOne() {
+<span class="fc" id="L476">        return Msg.of(&quot;@JdbcUpdate scalar generated-value return type requires exactly one returnGeneratedColumns entry&quot;);</span>
+    }
+
+    public static Msg.Message jdbcUpdateReturnGeneratedColumnsRowRequires(String name) {
+<span class="fc" id="L480">        return Msg.of(&quot;@JdbcUpdate row generated-value return type requires returnGeneratedColumns entry '&quot; + name + &quot;'&quot;);</span>
     }
 
     // @JdbcBatch ------------------------------------------------------------
 
 
     public static Msg.Message jdbcBatchRequiresNonNullOrUnspecifiedReturnType(OptionalFlag optional) {
-<span class="fc" id="L386">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires a non-null or unspecified batch &quot;</span>
+<span class="fc" id="L487">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires a non-null or unspecified batch &quot;</span>
                 + &quot;interface return type, but found '&quot; + optional + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcBatchRequiresBatchInterfaceReturnType(JdbcTypeMirror&lt;?&gt; returnType) {
-<span class="fc" id="L391">        return jdbcBatchRequiresBatchInterfaceReturnType(returnType.asType().toString());</span>
+<span class="fc" id="L492">        return jdbcBatchRequiresBatchInterfaceReturnType(returnType.asType().toString());</span>
     }
 
     public static Msg.Message jdbcBatchRequiresBatchInterfaceReturnType(CharSequence returnType) {
-<span class="fc" id="L395">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires a nested batch interface that &quot;</span>
+<span class="fc" id="L496">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires a nested batch interface that &quot;</span>
                 + &quot;extends JdbcBatch, but found '&quot; + returnType + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcBatchTypeMustBeInterfaceMessage(CharSequence batchType) {
-<span class="fc" id="L400">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires a batch interface, but found '&quot;</span>
+<span class="fc" id="L501">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires a batch interface, but found '&quot;</span>
                 + batchType + &quot;'&quot;);
     }
 
     public static Msg.Message jdbcBatchTypeMustBeNestedInFactoryInterface(CharSequence batchType) {
-<span class="fc" id="L405">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires the batch interface to be declared &quot;</span>
+<span class="fc" id="L506">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate requires the batch interface to be declared &quot;</span>
                 + &quot;inside the factory interface, but found '&quot; + batchType + &quot;'&quot;);
     }
 
+    public static Msg.Message jdbcBatchTypeMustExtendExactlyJdbcBatch(CharSequence batchType) {
+<span class="fc" id="L511">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate batch interface '&quot; + batchType</span>
+                + &quot;' must extend exactly JdbcBatch and no other interface&quot;);
+    }
+
     public static Msg.Message jdbcBatchTypeMustDeclareExactlyOneUpdateMethod(CharSequence batchType) {
-<span class="fc" id="L410">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate batch interface '&quot; + batchType</span>
+<span class="fc" id="L516">        return Msg.of(&quot;Java method return value: @JdbcBatchUpdate batch interface '&quot; + batchType</span>
                 + &quot;' must declare exactly one non-static, non-default @JdbcUpdate method&quot;);
     }
 
     public static Msg.Message jdbcBatchUpdateMethodMustReturnVoidMessage(CharSequence batchType,
                                                                          CharSequence updateMethod) {
-<span class="fc" id="L416">        return Msg.of(&quot;Java method: @JdbcBatchUpdate update method '&quot; + batchType + &quot;.&quot; + updateMethod</span>
+<span class="fc" id="L522">        return Msg.of(&quot;Java method: @JdbcBatchUpdate update method '&quot; + batchType + &quot;.&quot; + updateMethod</span>
                 + &quot;' must return void&quot;);
     }
 
     public static Msg.Message jdbcBatchUpdateMethodMustNotUseDynamicCollectionExpansion(VariableElement param) {
-<span class="fc" id="L421">        var sb = new StringBuilder();</span>
-<span class="fc" id="L422">        sb.append(&quot;Java method parameter '&quot;).append(param.getSimpleName());</span>
-<span class="fc" id="L423">        sb.append(&quot;': type '&quot;).append(searchKey(param.asType()));</span>
-<span class="fc" id="L424">        sb.append(&quot;' dynamic parameter extension in batch mode not allowed&quot;);</span>
-<span class="fc" id="L425">        return Msg.of(sb.toString());</span>
+<span class="fc" id="L527">        return Msg.of(&quot;Java method parameter '&quot; + param.getSimpleName() +</span>
+<span class="fc" id="L528">                &quot;': type '&quot; + searchKey(param.asType()) +</span>
+                &quot;' dynamic parameter extension in batch mode not allowed&quot;);
     }
 
     // ------------------------------------------------------------------------
@@ -434,22 +538,22 @@ public class JdbcMsg {
         private final Msg.Messages messages;
 
         InvalidParamConverter(String sql, SourceDV parameter, Msg.Messages messages) {
-<span class="fc" id="L437">            super(renderInvalidSqlParameterConverter(sql, parameter, messages));</span>
-<span class="fc" id="L438">            this.sql = sql;</span>
-<span class="fc" id="L439">            this.parameter = parameter;</span>
-<span class="fc" id="L440">            this.messages = messages;</span>
-<span class="fc" id="L441">        }</span>
+<span class="fc" id="L541">            super(renderInvalidSqlParameterConverter(sql, parameter, messages));</span>
+<span class="fc" id="L542">            this.sql = sql;</span>
+<span class="fc" id="L543">            this.parameter = parameter;</span>
+<span class="fc" id="L544">            this.messages = messages;</span>
+<span class="fc" id="L545">        }</span>
 
         public String sql() {
-<span class="fc" id="L444">            return sql;</span>
+<span class="fc" id="L548">            return sql;</span>
         }
 
         public SourceDV parameter() {
-<span class="fc" id="L448">            return parameter;</span>
+<span class="fc" id="L552">            return parameter;</span>
         }
 
         public Msg.Messages messages() {
-<span class="fc" id="L452">            return messages;</span>
+<span class="fc" id="L556">            return messages;</span>
         }
     }
 
@@ -460,22 +564,22 @@ public class JdbcMsg {
         private final Msg.Messages messages;
 
         InvalidReturnConverter(SourceDV method, SearchKey searchKey, Msg.Messages messages) {
-<span class="fc" id="L463">            super(renderInvalidJdbcToJavaResultConverter(searchKey, messages));</span>
-<span class="fc" id="L464">            this.method = method;</span>
-<span class="fc" id="L465">            this.searchKey = searchKey;</span>
-<span class="fc" id="L466">            this.messages = messages;</span>
-<span class="fc" id="L467">        }</span>
+<span class="fc" id="L567">            super(renderInvalidJdbcToJavaResultConverter(searchKey, messages));</span>
+<span class="fc" id="L568">            this.method = method;</span>
+<span class="fc" id="L569">            this.searchKey = searchKey;</span>
+<span class="fc" id="L570">            this.messages = messages;</span>
+<span class="fc" id="L571">        }</span>
 
         public SourceDV method() {
-<span class="fc" id="L470">            return method;</span>
+<span class="fc" id="L574">            return method;</span>
         }
 
         public SearchKey searchKey() {
-<span class="fc" id="L474">            return searchKey;</span>
+<span class="fc" id="L578">            return searchKey;</span>
         }
 
         public Msg.Messages messages() {
-<span class="fc" id="L478">            return messages;</span>
+<span class="fc" id="L582">            return messages;</span>
         }
     }
 

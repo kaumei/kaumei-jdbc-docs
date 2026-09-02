@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>KaumeiTxManagerImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-tx</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.tx.internal</a> &gt; <span class="el_source">KaumeiTxManagerImpl.java</span></div><h1>KaumeiTxManagerImpl.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2026 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.tx.internal;
+
+import io.kaumei.jdbc.core.JdbcConnectionProvider;
+import io.kaumei.jdbc.tx.*;
+import org.jspecify.annotations.Nullable;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import static io.kaumei.jdbc.tx.internal.Utils.close;
+import static io.kaumei.jdbc.tx.internal.Utils.throwUnchecked;
+import static java.util.Objects.requireNonNull;
+
+public class KaumeiTxManagerImpl implements KaumeiTxManager {
+
+    private final JdbcConnectionProvider provider;
+<span class="fc" id="L21">    private final ActiveTxContext activeTx = new ActiveTxContext();</span>
+
+<span class="fc" id="L23">    public KaumeiTxManagerImpl(JdbcConnectionProvider provider) {</span>
+<span class="fc" id="L24">        this.provider = requireNonNull(provider, &quot;provider&quot;);</span>
+<span class="fc" id="L25">    }</span>
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public Connection getConnection() throws SQLException {
+<span class="fc" id="L31">        var ctx = activeTx.currentOpt();</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        if (ctx == null) {</span>
+<span class="fc" id="L33">            return provider.getConnection();</span>
+        }
+<span class="fc" id="L35">        return ctx.protectedCon();</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public void setRollbackOnly() {
+<span class="fc" id="L42">        activeTx.current().setRollbackOnly();</span>
+<span class="fc" id="L43">    }</span>
+
+    @Override
+    public boolean isRollbackOnly() {
+<span class="fc" id="L47">        return activeTx.current().isRollbackOnly();</span>
+    }
+
+    @Override
+    public boolean isTransactionActive() {
+<span class="fc" id="L52">        var ctx = activeTx.currentOpt();</span>
+<span class="fc bfc" id="L53" title="All 4 branches covered.">        return ctx != null &amp;&amp; ctx.isTransactionActive();</span>
+    }
+
+    @Override
+    public void registerSynchronization(KaumeiTxSynchronization synchronization) {
+<span class="fc" id="L58">        requireNonNull(synchronization, &quot;synchronization&quot;);</span>
+<span class="fc" id="L59">        activeTx.current().addSynchronization(synchronization);</span>
+<span class="fc" id="L60">    }</span>
+
+    @Override
+    public void commitAndContinue() {
+<span class="fc" id="L64">        ThreadTxContext ctx = activeTx.current();</span>
+<span class="fc" id="L65">        ctx.completing();</span>
+<span class="fc" id="L66">        Throwable exp = ctx.beforeCompletion(null);</span>
+<span class="fc" id="L67">        activeTx.suspend();</span>
+        try {
+<span class="fc" id="L69">            exp = ctx.completeCurrentTransaction(exp);</span>
+        } finally {
+<span class="fc" id="L71">            activeTx.restore(ctx);</span>
+        }
+<span class="fc bfc" id="L73" title="All 2 branches covered.">        if (exp == null) {</span>
+<span class="fc" id="L74">            ctx.running();</span>
+        } else {
+<span class="fc" id="L76">            ctx.finished(exp);</span>
+<span class="nc" id="L77">            throwUnchecked(exp);</span>
+        }
+<span class="fc" id="L79">    }</span>
+
+    @Override
+    public void required(KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="fc" id="L83">        execute(KaumeiTxType.REQUIRED, definition, callback);</span>
+<span class="fc" id="L84">    }</span>
+
+    @Override
+    public &lt;T&gt; T required(KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L88">        var result = execute(KaumeiTxType.REQUIRED, definition, callback);</span>
+<span class="fc" id="L89">        return requireNonNull(result, &quot;result&quot;); // sanity check</span>
+    }
+
+    @Override
+    public &lt;T&gt; @Nullable T requiredOpt(KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L94">        return executeOpt(KaumeiTxType.REQUIRED, definition, callback);</span>
+    }
+
+    @Override
+    public void requiresNew(KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="nc" id="L99">        execute(KaumeiTxType.REQUIRES_NEW, definition, callback);</span>
+<span class="nc" id="L100">    }</span>
+
+    @Override
+    public &lt;T&gt; T requiresNew(KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="nc" id="L104">        var result = execute(KaumeiTxType.REQUIRES_NEW, definition, callback);</span>
+<span class="nc" id="L105">        return requireNonNull(result, &quot;result&quot;); // sanity check</span>
+    }
+
+    @Override
+    public &lt;T&gt; @Nullable T requiresNewOpt(KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L110">        return executeOpt(KaumeiTxType.REQUIRES_NEW, definition, callback);</span>
+    }
+
+    @Override
+    public void mandatory(KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="nc" id="L115">        execute(KaumeiTxType.MANDATORY, definition, callback);</span>
+<span class="nc" id="L116">    }</span>
+
+    @Override
+    public &lt;T&gt; T mandatory(KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="nc" id="L120">        var result = execute(KaumeiTxType.MANDATORY, definition, callback);</span>
+<span class="nc" id="L121">        return requireNonNull(result, &quot;result&quot;); // sanity check</span>
+    }
+
+    @Override
+    public &lt;T&gt; @Nullable T mandatoryOpt(KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L126">        return executeOpt(KaumeiTxType.MANDATORY, definition, callback);</span>
+    }
+
+    @Override
+    public void supports(KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="nc" id="L131">        execute(KaumeiTxType.SUPPORTS, definition, callback);</span>
+<span class="nc" id="L132">    }</span>
+
+    @Override
+    public &lt;T&gt; T supports(KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="nc" id="L136">        var result = execute(KaumeiTxType.SUPPORTS, definition, callback);</span>
+<span class="nc" id="L137">        return requireNonNull(result, &quot;result&quot;); // sanity check</span>
+    }
+
+    @Override
+    public &lt;T&gt; @Nullable T supportsOpt(KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L142">        return executeOpt(KaumeiTxType.SUPPORTS, definition, callback);</span>
+    }
+
+    @Override
+    public void notSupported(KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="nc" id="L147">        execute(KaumeiTxType.NOT_SUPPORTED, definition, callback);</span>
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public &lt;T&gt; T notSupported(KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="nc" id="L152">        var result = execute(KaumeiTxType.NOT_SUPPORTED, definition, callback);</span>
+<span class="nc" id="L153">        return requireNonNull(result, &quot;result&quot;); // sanity check</span>
+    }
+
+    @Override
+    public &lt;T&gt; @Nullable T notSupportedOpt(KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L158">        return executeOpt(KaumeiTxType.NOT_SUPPORTED, definition, callback);</span>
+    }
+
+    @Override
+    public void never(KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="nc" id="L163">        execute(KaumeiTxType.NEVER, definition, callback);</span>
+<span class="nc" id="L164">    }</span>
+
+    @Override
+    public &lt;T&gt; T never(KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="nc" id="L168">        var result = execute(KaumeiTxType.NEVER, definition, callback);</span>
+<span class="nc" id="L169">        return requireNonNull(result, &quot;result&quot;); // sanity check</span>
+    }
+
+    @Override
+    public &lt;T&gt; @Nullable T neverOpt(KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L174">        return executeOpt(KaumeiTxType.NEVER, definition, callback);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private void execute(KaumeiTxType type, KaumeiTxDefinition definition, Callback callback) throws Exception {
+<span class="fc" id="L180">        requireNonNull(type, &quot;type&quot;);</span>
+<span class="fc" id="L181">        requireNonNull(definition, &quot;definition&quot;);</span>
+<span class="fc" id="L182">        requireNonNull(callback, &quot;callback&quot;);</span>
+<span class="fc" id="L183">        Throwable exp = null;</span>
+<span class="fc" id="L184">        var scope = before(type, definition);</span>
+<span class="fc" id="L185">        var context = new CallbackContext(scope.ctx);</span>
+        try {
+<span class="fc" id="L187">            callback.execute(context);</span>
+<span class="fc" id="L188">        } catch (Throwable e) {</span>
+<span class="fc" id="L189">            exp = exception(type, definition, scope, e);</span>
+        } finally {
+<span class="fc" id="L191">            exp = after(type, scope, exp);</span>
+        }
+
+<span class="fc bfc" id="L194" title="All 2 branches covered.">        if (exp instanceof Exception e) {</span>
+<span class="fc" id="L195">            throw e;</span>
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">        } else if (exp instanceof Error e) {</span>
+<span class="nc" id="L197">            throw e;</span>
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">        } else if (exp != null) {</span>
+<span class="nc" id="L199">            throw new KaumeiTxException(exp.getMessage(), exp);</span>
+        }
+<span class="fc" id="L201">    }</span>
+
+    private &lt;T&gt; @Nullable T execute(KaumeiTxType type, KaumeiTxDefinition definition, CallbackWithResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L204">        requireNonNull(type, &quot;type&quot;);</span>
+<span class="fc" id="L205">        requireNonNull(definition, &quot;definition&quot;);</span>
+<span class="fc" id="L206">        requireNonNull(callback, &quot;callback&quot;);</span>
+<span class="fc" id="L207">        Throwable exp = null;</span>
+<span class="fc" id="L208">        T result = null;</span>
+<span class="fc" id="L209">        var scope = before(type, definition);</span>
+<span class="fc" id="L210">        var context = new CallbackContext(scope.ctx);</span>
+        try {
+<span class="fc" id="L212">            result = callback.execute(context);</span>
+<span class="nc" id="L213">        } catch (Throwable e) {</span>
+<span class="nc" id="L214">            exp = exception(type, definition, scope, e);</span>
+        } finally {
+<span class="fc" id="L216">            exp = after(type, scope, exp);</span>
+        }
+
+<span class="pc bpc" id="L219" title="1 of 2 branches missed.">        if (exp instanceof Exception e) {</span>
+<span class="nc" id="L220">            throw e;</span>
+<span class="pc bpc" id="L221" title="1 of 2 branches missed.">        } else if (exp instanceof Error e) {</span>
+<span class="nc" id="L222">            throw e;</span>
+<span class="pc bpc" id="L223" title="1 of 2 branches missed.">        } else if (exp != null) {</span>
+<span class="nc" id="L224">            throw new KaumeiTxException(exp.getMessage(), exp);</span>
+        }
+<span class="fc" id="L226">        return result;</span>
+    }
+
+    private &lt;T&gt; @Nullable T executeOpt(KaumeiTxType type, KaumeiTxDefinition definition, CallbackWithNullableResult&lt;T&gt; callback) throws Exception {
+<span class="fc" id="L230">        requireNonNull(type, &quot;type&quot;);</span>
+<span class="fc" id="L231">        requireNonNull(definition, &quot;definition&quot;);</span>
+<span class="fc" id="L232">        requireNonNull(callback, &quot;callback&quot;);</span>
+<span class="fc" id="L233">        Throwable exp = null;</span>
+<span class="fc" id="L234">        T result = null;</span>
+<span class="fc" id="L235">        var scope = before(type, definition);</span>
+<span class="fc" id="L236">        var context = new CallbackContext(scope.ctx);</span>
+        try {
+<span class="fc" id="L238">            result = callback.execute(context);</span>
+<span class="fc" id="L239">        } catch (Throwable e) {</span>
+<span class="fc" id="L240">            exp = exception(type, definition, scope, e);</span>
+        } finally {
+<span class="fc" id="L242">            exp = after(type, scope, exp);</span>
+        }
+
+<span class="fc bfc" id="L245" title="All 2 branches covered.">        if (exp instanceof Exception e) {</span>
+<span class="fc" id="L246">            throw e;</span>
+<span class="fc bfc" id="L247" title="All 2 branches covered.">        } else if (exp instanceof Error e) {</span>
+<span class="fc" id="L248">            throw e;</span>
+<span class="pc bpc" id="L249" title="1 of 2 branches missed.">        } else if (exp != null) {</span>
+<span class="nc" id="L250">            throw new KaumeiTxException(exp.getMessage(), exp);</span>
+        }
+
+<span class="fc" id="L253">        return result;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private TxScope before(KaumeiTxType type, KaumeiTxDefinition definition) {
+<span class="fc" id="L259">        var current = activeTx.currentOpt();</span>
+<span class="fc bfc" id="L260" title="All 2 branches covered.">        if (current != null) {</span>
+<span class="fc" id="L261">            current.requireNotFinished();</span>
+        }
+<span class="fc bfc" id="L263" title="All 6 branches covered.">        return switch (type) {</span>
+<span class="fc bfc" id="L264" title="All 2 branches covered.">            case REQUIRED -&gt; activeTx.hasCurrent()</span>
+<span class="fc" id="L265">                    ? join(definition)</span>
+<span class="fc" id="L266">                    : start(definition, null, false);</span>
+            case REQUIRES_NEW -&gt; {
+<span class="fc" id="L268">                var suspended = activeTx.suspend();</span>
+                try {
+<span class="fc" id="L270">                    yield start(definition, suspended, true);</span>
+<span class="fc" id="L271">                } catch (RuntimeException | Error e) {</span>
+<span class="fc" id="L272">                    activeTx.restore(suspended);</span>
+<span class="fc" id="L273">                    throw e;</span>
+                }
+            }
+            case MANDATORY -&gt; {
+<span class="fc" id="L277">                activeTx.current();</span>
+<span class="fc" id="L278">                yield join(definition);</span>
+            }
+<span class="fc bfc" id="L280" title="All 2 branches covered.">            case SUPPORTS -&gt; activeTx.hasCurrent()</span>
+<span class="fc" id="L281">                    ? join(definition)</span>
+<span class="fc" id="L282">                    : TxScope.none();</span>
+<span class="fc" id="L283">            case NOT_SUPPORTED -&gt; TxScope.suspended(activeTx.suspend());</span>
+            case NEVER -&gt; {
+<span class="fc" id="L285">                activeTx.requireNoCurrent();</span>
+<span class="fc" id="L286">                yield TxScope.none();</span>
+            }
+        };
+    }
+
+    private TxScope join(KaumeiTxDefinition definition) {
+<span class="fc" id="L292">        var ctx = activeTx.current();</span>
+<span class="fc" id="L293">        ctx.validateCompatible(definition);</span>
+<span class="fc" id="L294">        return TxScope.join(ctx);</span>
+    }
+
+    private TxScope start(KaumeiTxDefinition definition, @Nullable ThreadTxContext suspended, boolean restoreSuspended) {
+<span class="fc" id="L298">        ThreadTxContext ctx = startTx(definition);</span>
+<span class="fc" id="L299">        activeTx.activate(ctx);</span>
+<span class="fc" id="L300">        return TxScope.started(ctx, suspended, restoreSuspended);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private Throwable exception(KaumeiTxType type, KaumeiTxDefinition definition, TxScope scope, Throwable exp) {
+<span class="pc bpc" id="L306" title="2 of 3 branches missed.">        return switch (type) {</span>
+            case REQUIRED, MANDATORY, REQUIRES_NEW -&gt;
+<span class="fc" id="L308">                    markRollbackOnly(requireNonNull(scope.ctx, &quot;ctx&quot;), definition, exp);</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">            case SUPPORTS -&gt; scope.ctx == null</span>
+<span class="nc" id="L310">                    ? exp</span>
+<span class="nc" id="L311">                    : markRollbackOnly(scope.ctx, definition, exp);</span>
+<span class="nc" id="L312">            case NOT_SUPPORTED, NEVER -&gt; exp;</span>
+        };
+    }
+
+    Throwable markRollbackOnly(ThreadTxContext ctx, KaumeiTxDefinition definition, Throwable exp) {
+<span class="fc bfc" id="L317" title="All 4 branches covered.">        if (ctx.isTransactionFinished() || ctx.isRollbackOnly()) {</span>
+<span class="fc" id="L318">            return exp;</span>
+<span class="fc bfc" id="L319" title="All 2 branches covered.">        } else if (exp instanceof Error) {</span>
+<span class="fc" id="L320">            ctx.setRollbackOnly();</span>
+        } else {
+            try {
+<span class="fc bfc" id="L323" title="All 2 branches covered.">                if (definition.dontRollbackOn().matches(exp)) {</span>
+<span class="fc" id="L324">                    return exp;</span>
+<span class="fc bfc" id="L325" title="All 4 branches covered.">                } else if (definition.rollbackOn().matches(exp)</span>
+                        || exp instanceof RuntimeException) {
+<span class="fc" id="L327">                    ctx.setRollbackOnly();</span>
+                }
+<span class="fc" id="L329">            } catch (Throwable matcherFailure) {</span>
+<span class="fc" id="L330">                ctx.setRollbackOnly();</span>
+<span class="pc bpc" id="L331" title="1 of 2 branches missed.">                if (matcherFailure != exp) {</span>
+<span class="fc" id="L332">                    exp.addSuppressed(matcherFailure);</span>
+                }
+<span class="fc" id="L334">            }</span>
+        }
+<span class="fc" id="L336">        return exp;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private @Nullable Throwable after(KaumeiTxType type, TxScope scope, @Nullable Throwable exp) {
+<span class="pc bpc" id="L342" title="1 of 4 branches missed.">        return switch (type) {</span>
+<span class="fc bfc" id="L343" title="All 2 branches covered.">            case REQUIRED -&gt; scope.completesTx</span>
+<span class="fc" id="L344">                    ? completeTx(requireNonNull(scope.ctx, &quot;ctx&quot;), exp)</span>
+<span class="fc" id="L345">                    : exp;</span>
+            case REQUIRES_NEW -&gt; {
+                try {
+<span class="fc" id="L348">                    yield completeTx(requireNonNull(scope.ctx, &quot;ctx&quot;), exp);</span>
+                } finally {
+<span class="fc" id="L350">                    activeTx.restore(scope.suspended);</span>
+                }
+            }
+<span class="fc" id="L353">            case MANDATORY, SUPPORTS, NEVER -&gt; exp;</span>
+            case NOT_SUPPORTED -&gt; {
+<span class="fc" id="L355">                activeTx.restore(scope.suspended);</span>
+<span class="fc" id="L356">                yield exp;</span>
+            }
+        };
+    }
+
+    private @Nullable Throwable completeTx(ThreadTxContext ctx, @Nullable Throwable exp) {
+<span class="fc bfc" id="L362" title="All 2 branches covered.">        if (ctx.isTransactionFinished()) {</span>
+<span class="fc" id="L363">            activeTx.suspend();</span>
+<span class="fc" id="L364">            return ctx.closeContext(ctx.terminalFailure(exp));</span>
+        }
+
+        try {
+<span class="fc" id="L368">            ctx.completing();</span>
+<span class="fc" id="L369">            exp = ctx.beforeCompletion(exp);</span>
+        } finally {
+<span class="fc" id="L371">            activeTx.suspend();</span>
+        }
+
+<span class="fc" id="L374">        exp = ctx.completeCurrentTransaction(exp);</span>
+<span class="fc" id="L375">        ctx.finished(exp);</span>
+<span class="fc" id="L376">        return ctx.closeContext(exp);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private ThreadTxContext startTx(KaumeiTxDefinition definition) {
+<span class="fc" id="L382">        Connection con = null;</span>
+<span class="fc" id="L383">        ThreadTxContext ctx = null;</span>
+        try {
+<span class="fc" id="L385">            con = provider.getConnection();</span>
+<span class="fc" id="L386">            ctx = new ThreadTxContext(con, definition);</span>
+<span class="fc" id="L387">            ctx.prepareConnectionState();</span>
+<span class="fc" id="L388">            return ctx;</span>
+<span class="fc" id="L389">        } catch (Throwable e) {</span>
+<span class="fc" id="L390">            Throwable exp = e;</span>
+<span class="pc bpc" id="L391" title="1 of 2 branches missed.">            if (ctx != null) {</span>
+<span class="fc" id="L392">                exp = ctx.restoreConnectionState(exp);</span>
+            }
+<span class="pc bpc" id="L394" title="1 of 2 branches missed.">            if (con != null) {</span>
+<span class="fc" id="L395">                exp = close(con, exp);</span>
+            }
+<span class="fc bfc" id="L397" title="All 2 branches covered.">            if (exp instanceof RuntimeException re) {</span>
+<span class="fc" id="L398">                throw re;</span>
+<span class="pc bpc" id="L399" title="1 of 2 branches missed.">            } else if (exp instanceof Error error) {</span>
+<span class="fc" id="L400">                throw error;</span>
+            } else {
+<span class="nc" id="L402">                throw new KaumeiTxException(exp.getMessage(), exp);</span>
+            }
+        }
+    }
+
+    private final class CallbackContext implements KaumeiTxContext {
+
+        private final @Nullable ThreadTxContext expected;
+
+<span class="fc" id="L411">        private CallbackContext(@Nullable ThreadTxContext expected) {</span>
+<span class="fc" id="L412">            this.expected = expected;</span>
+<span class="fc" id="L413">        }</span>
+
+        @Override
+        public Connection getConnection() throws SQLException {
+<span class="fc" id="L417">            KaumeiTxManagerImpl txManager = this.txManager();</span>
+<span class="fc bfc" id="L418" title="All 2 branches covered.">            if (expected == null) {</span>
+<span class="fc" id="L419">                throw new IllegalStateException(&quot;No active transaction.&quot;);</span>
+            }
+<span class="fc" id="L421">            return txManager.getConnection();</span>
+        }
+
+        @Override
+        public boolean isTransactionActive() {
+<span class="fc" id="L426">            return this.txManager().isTransactionActive();</span>
+        }
+
+        @Override
+        public void setRollbackOnly() {
+<span class="fc" id="L431">            this.txManager().setRollbackOnly();</span>
+<span class="fc" id="L432">        }</span>
+
+        @Override
+        public boolean isRollbackOnly() {
+<span class="fc" id="L436">            return this.txManager().isRollbackOnly();</span>
+        }
+
+        @Override
+        public void registerSynchronization(KaumeiTxSynchronization synchronization) {
+<span class="fc" id="L441">            this.txManager().registerSynchronization(synchronization);</span>
+<span class="fc" id="L442">        }</span>
+
+        @Override
+        public void commitAndContinue() {
+<span class="fc" id="L446">            this.txManager().commitAndContinue();</span>
+<span class="fc" id="L447">        }</span>
+
+        private KaumeiTxManagerImpl txManager() {
+<span class="fc bfc" id="L450" title="All 2 branches covered.">            if (activeTx.currentOpt() != expected) {</span>
+<span class="fc" id="L451">                throw new IllegalStateException(&quot;Transaction callback context is not current.&quot;);</span>
+            }
+<span class="fc" id="L453">            return KaumeiTxManagerImpl.this;</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // static stuff
+
+<span class="fc" id="L460">    private record TxScope(@Nullable ThreadTxContext ctx, @Nullable ThreadTxContext suspended,</span>
+                           boolean completesTx, boolean restoreSuspended) {
+
+        static TxScope none() {
+<span class="fc" id="L464">            return new TxScope(null, null, false, false);</span>
+        }
+
+        static TxScope join(ThreadTxContext ctx) {
+<span class="fc" id="L468">            return new TxScope(ctx, null, false, false);</span>
+        }
+
+        static TxScope started(ThreadTxContext ctx, @Nullable ThreadTxContext suspended, boolean restoreSuspended) {
+<span class="fc" id="L472">            return new TxScope(ctx, suspended, true, restoreSuspended);</span>
+        }
+
+        static TxScope suspended(@Nullable ThreadTxContext suspended) {
+<span class="fc" id="L476">            return new TxScope(null, suspended, false, true);</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

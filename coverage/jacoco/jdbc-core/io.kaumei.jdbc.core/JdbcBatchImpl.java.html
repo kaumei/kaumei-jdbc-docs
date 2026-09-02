@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JdbcBatchImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-core</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.core</a> &gt; <span class="el_source">JdbcBatchImpl.java</span></div><h1>JdbcBatchImpl.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.core;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import static java.util.Objects.requireNonNull;
+
+public class JdbcBatchImpl implements JdbcBatch {
+<span class="fc" id="L13">    private static final int[] EMPTY = new int[0];</span>
+    protected final PreparedStatement stmt;
+    private final int bachSize;
+
+    // ----- state
+    private int countBatch;
+    private int countAll;
+
+<span class="fc" id="L21">    public JdbcBatchImpl(PreparedStatement stmt, int bachSize) {</span>
+<span class="fc" id="L22">        this.stmt = requireNonNull(stmt);</span>
+<span class="fc" id="L23">        this.bachSize = bachSize;</span>
+<span class="fc" id="L24">    }</span>
+
+    protected int[] addBatch() throws SQLException {
+<span class="fc" id="L27">        this.stmt.addBatch();</span>
+<span class="fc" id="L28">        this.countBatch++;</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">        if (this.countBatch &gt;= this.bachSize) {</span>
+<span class="fc" id="L30">            return executeBatch0();</span>
+        }
+<span class="fc" id="L32">        return EMPTY;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public int bachSize() {
+<span class="fc" id="L39">        return this.bachSize;</span>
+    }
+
+    @Override
+    public int countBatch() {
+<span class="fc" id="L44">        return this.countBatch;</span>
+    }
+
+    @Override
+    public int countAll() {
+<span class="fc" id="L49">        return this.countAll;</span>
+    }
+
+    @Override
+    public void clearParameters() {
+        try {
+<span class="nc" id="L55">            this.stmt.clearParameters();</span>
+<span class="nc" id="L56">        } catch (SQLException e) {</span>
+<span class="nc" id="L57">            throw new JdbcException(e.getMessage(), e);</span>
+<span class="nc" id="L58">        }</span>
+<span class="nc" id="L59">    }</span>
+
+    @Override
+    public void clearBatch() {
+        try {
+<span class="nc" id="L64">            this.stmt.clearBatch();</span>
+<span class="nc" id="L65">            this.countBatch = 0;</span>
+<span class="nc" id="L66">        } catch (SQLException e) {</span>
+<span class="nc" id="L67">            throw new JdbcException(e.getMessage(), e);</span>
+<span class="nc" id="L68">        }</span>
+<span class="nc" id="L69">    }</span>
+
+    @Override
+    public int[] executeBatch() {
+        try {
+<span class="fc" id="L74">            return this.executeBatch0();</span>
+<span class="nc" id="L75">        } catch (SQLException e) {</span>
+<span class="nc" id="L76">            throw new JdbcException(e.getMessage(), e);</span>
+        }
+    }
+
+    private int[] executeBatch0() throws SQLException {
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">        if (this.countBatch &gt; 0) {</span>
+<span class="fc" id="L82">            this.countAll += this.countBatch;</span>
+<span class="fc" id="L83">            this.countBatch = 0;</span>
+<span class="fc" id="L84">            return this.stmt.executeBatch();</span>
+        }
+<span class="nc" id="L86">        return EMPTY;</span>
+    }
+
+    @Override
+    public void close() {
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (this.countBatch &gt; 0) {</span>
+<span class="fc" id="L92">            throw new JdbcException(&quot;Batch contains unexecuted statements. Call executeBatch() before closing.&quot;);</span>
+        }
+        try {
+<span class="fc" id="L95">            stmt.close();</span>
+<span class="nc" id="L96">        } catch (Exception e) {</span>
+<span class="nc" id="L97">            throw new JdbcException(e.getMessage(), e);</span>
+<span class="fc" id="L98">        }</span>
+<span class="fc" id="L99">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

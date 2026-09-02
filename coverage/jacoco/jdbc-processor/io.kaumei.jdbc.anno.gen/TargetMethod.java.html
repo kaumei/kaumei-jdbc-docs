@@ -6,9 +6,6 @@ package io.kaumei.jdbc.anno.gen;
 
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.MethodSpec;
-import io.kaumei.jdbc.CodeGenerationException;
-import io.kaumei.jdbc.JdbcEmptyResultSetException;
-import io.kaumei.jdbc.JdbcUnexpectedRowException;
 import io.kaumei.jdbc.anno.ProcessorException;
 import io.kaumei.jdbc.anno.ctx.ConfigService;
 import io.kaumei.jdbc.anno.ctx.Context;
@@ -20,6 +17,9 @@ import io.kaumei.jdbc.anno.msg.JdbcMsg;
 import io.kaumei.jdbc.anno.msg.Msg;
 import io.kaumei.jdbc.annotation.config.JdbcNoMoreRows;
 import io.kaumei.jdbc.annotation.config.JdbcNoRows;
+import io.kaumei.jdbc.core.CodeGenerationException;
+import io.kaumei.jdbc.core.JdbcEmptyResultSetException;
+import io.kaumei.jdbc.core.JdbcUnexpectedRowException;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.ExecutableElement;
@@ -31,312 +31,316 @@ import static java.util.Objects.requireNonNull;
 
 public final class TargetMethod {
 
-<span class="fc" id="L34">    private static final Set&lt;String&gt; RESERVED = Set.of(&quot;con&quot;, &quot;index&quot;, &quot;plCount&quot;, &quot;result&quot;, &quot;resultSet&quot;, &quot;row&quot;, &quot;rs&quot;, &quot;sql&quot;, &quot;sqlSb&quot;, &quot;stmt&quot;, &quot;supplier&quot;);</span>
+<span class="fc" id="L34">    private static final Set&lt;String&gt; RESERVED = Set.of(&quot;batch&quot;, &quot;con&quot;, &quot;index&quot;, &quot;plCount&quot;,</span>
+            &quot;result&quot;, &quot;resultSet&quot;, &quot;row&quot;, &quot;rs&quot;,
+            &quot;sql&quot;, &quot;sqlSb&quot;, &quot;stmt&quot;, &quot;supplier&quot;);
 
     private final Context ctx;
     private final @Nullable ExecutableElement method;
     // ----- state
-<span class="fc" id="L39">    private final CodeBlock.Builder code = CodeBlock.builder();</span>
-<span class="fc" id="L40">    private final Set&lt;String&gt; usedNames = new HashSet&lt;&gt;();</span>
-<span class="fc" id="L41">    private final Map&lt;String, String&gt; parameterNames = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L41">    private final CodeBlock.Builder code = CodeBlock.builder();</span>
+<span class="fc" id="L42">    private final Set&lt;String&gt; usedNames = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L43">    private final Map&lt;String, String&gt; parameterNames = new HashMap&lt;&gt;();</span>
 
-<span class="fc" id="L43">    public TargetMethod(Context ctx, ExecutableElement method) {</span>
-<span class="fc" id="L44">        this.ctx = ctx;</span>
-<span class="fc" id="L45">        this.method = method;</span>
-<span class="fc" id="L46">        this.usedNames.addAll(RESERVED);</span>
+<span class="fc" id="L45">    public TargetMethod(Context ctx, ExecutableElement method) {</span>
+<span class="fc" id="L46">        this.ctx = ctx;</span>
+<span class="fc" id="L47">        this.method = method;</span>
+<span class="fc" id="L48">        this.usedNames.addAll(RESERVED);</span>
 
-<span class="fc" id="L48">        var conflicts = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L50">        var conflicts = new ArrayList&lt;String&gt;();</span>
         // keep all non-conflicting names
-<span class="fc bfc" id="L50" title="All 2 branches covered.">        for (var param : method.getParameters()) {</span>
-<span class="fc" id="L51">            var name = param.getSimpleName().toString();</span>
-<span class="fc bfc" id="L52" title="All 2 branches covered.">            if (this.usedNames.add(name)) {</span>
-<span class="fc" id="L53">                parameterNames.put(name, name);</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        for (var param : method.getParameters()) {</span>
+<span class="fc" id="L53">            var name = param.getSimpleName().toString();</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">            if (this.usedNames.add(name)) {</span>
+<span class="fc" id="L55">                parameterNames.put(name, name);</span>
             } else {
-<span class="fc" id="L55">                conflicts.add(name);</span>
+<span class="fc" id="L57">                conflicts.add(name);</span>
             }
-<span class="fc" id="L57">        }</span>
-<span class="fc bfc" id="L58" title="All 2 branches covered.">        for (var param : conflicts) {</span>
-<span class="fc" id="L59">            parameterNames.put(param, tempVarName(param + &quot;Param&quot;));</span>
-<span class="fc" id="L60">        }</span>
-<span class="fc" id="L61">    }</span>
+<span class="fc" id="L59">        }</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        for (var param : conflicts) {</span>
+<span class="fc" id="L61">            parameterNames.put(param, tempVarName(param + &quot;Param&quot;));</span>
+<span class="fc" id="L62">        }</span>
+<span class="fc" id="L63">    }</span>
 
-<span class="fc" id="L63">    TargetMethod(TargetMethod parent) {</span>
-<span class="fc" id="L64">        this.ctx = parent.ctx;</span>
-<span class="fc" id="L65">        this.method = null;</span>
-<span class="fc" id="L66">        this.usedNames.addAll(parent.usedNames);</span>
-<span class="fc" id="L67">        this.parameterNames.putAll(parent.parameterNames);</span>
-<span class="fc" id="L68">    }</span>
+<span class="fc" id="L65">    TargetMethod(TargetMethod parent) {</span>
+<span class="fc" id="L66">        this.ctx = parent.ctx;</span>
+<span class="fc" id="L67">        this.method = null;</span>
+<span class="fc" id="L68">        this.usedNames.addAll(parent.usedNames);</span>
+<span class="fc" id="L69">        this.parameterNames.putAll(parent.parameterNames);</span>
+<span class="fc" id="L70">    }</span>
 
     // ------------------------------------------------------------------------
 
     @Override
     public String toString() {
-<span class="nc" id="L74">        return this.code.build().toString();</span>
+<span class="nc" id="L76">        return this.code.build().toString();</span>
     }
 
     // ------------------------------------------------------------------------
 
     CodeBlock build() {
-<span class="fc" id="L80">        return code.build();</span>
+<span class="fc" id="L82">        return code.build();</span>
     }
 
     MethodSpec build(Msg.Messages messages, String header) {
-<span class="fc" id="L84">        var methodBuilder = ctx.kaumeiJdbcGenerator.createMethodBuilder(requireNonNull(method), this);</span>
-<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (messages.hasMessages()) {</span>
-<span class="fc" id="L86">            var errorCode = CodeBlock.builder();</span>
-<span class="fc" id="L87">            var msg = render(messages, header);</span>
-<span class="fc" id="L88">            errorCode.addStatement(&quot;throw new $T($S)&quot;, CodeGenerationException.class, msg);</span>
-<span class="fc" id="L89">            methodBuilder.addCode(errorCode.build());</span>
-<span class="fc" id="L90">        } else {</span>
-<span class="fc" id="L91">            methodBuilder.addCode(code.build());</span>
+<span class="fc" id="L86">        var methodBuilder = ctx.kaumeiJdbcGenerator.createMethodBuilder(requireNonNull(method), this);</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (messages.hasMessages()) {</span>
+<span class="fc" id="L88">            var errorCode = CodeBlock.builder();</span>
+<span class="fc" id="L89">            var msg = render(messages, header);</span>
+<span class="fc" id="L90">            errorCode.addStatement(&quot;throw new $T($S)&quot;, CodeGenerationException.class, msg);</span>
+<span class="fc" id="L91">            methodBuilder.addCode(errorCode.build());</span>
+<span class="fc" id="L92">        } else {</span>
+<span class="fc" id="L93">            methodBuilder.addCode(code.build());</span>
         }
-<span class="fc" id="L93">        return methodBuilder.build();</span>
+<span class="fc" id="L95">        return methodBuilder.build();</span>
     }
 
     private String render(Msg.Messages messages, String header) {
-<span class="fc" id="L97">        var sb = new StringBuilder();</span>
-<span class="fc" id="L98">        sb.append(header).append(&quot;\n&quot;);</span>
+<span class="fc" id="L99">        var sb = new StringBuilder();</span>
+<span class="fc" id="L100">        sb.append(header).append(&quot;\n&quot;);</span>
 
-<span class="fc" id="L100">        boolean reasons = true;</span>
-<span class="fc bfc" id="L101" title="All 2 branches covered.">        for (var message : messages) {</span>
-<span class="fc bfc" id="L102" title="All 4 branches covered.">            if (message instanceof JdbcMsg.InvalidParamConverter</span>
+<span class="fc" id="L102">        boolean reasons = true;</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        for (var message : messages) {</span>
+<span class="fc bfc" id="L104" title="All 4 branches covered.">            if (message instanceof JdbcMsg.InvalidParamConverter</span>
                     || message instanceof JdbcMsg.InvalidReturnConverter) {
-<span class="fc" id="L104">                continue;</span>
-<span class="fc bfc" id="L105" title="All 2 branches covered.">            } else if (reasons) {</span>
-<span class="fc" id="L106">                sb.append(&quot;\nReason(s):&quot;);</span>
-<span class="fc" id="L107">                reasons = false;</span>
+<span class="fc" id="L106">                continue;</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">            } else if (reasons) {</span>
+<span class="fc" id="L108">                sb.append(&quot;\nReason(s):&quot;);</span>
+<span class="fc" id="L109">                reasons = false;</span>
             }
-<span class="fc" id="L109">            sb.append(&quot;\n* &quot;).append(message.text());</span>
-<span class="fc" id="L110">        }</span>
+<span class="fc" id="L111">            sb.append(&quot;\n* &quot;).append(message.text());</span>
+<span class="fc" id="L112">        }</span>
 
-<span class="fc" id="L112">        var params = true;</span>
-<span class="fc bfc" id="L113" title="All 2 branches covered.">        for (var message : messages) {</span>
-<span class="fc bfc" id="L114" title="All 2 branches covered.">            if (message instanceof JdbcMsg.InvalidParamConverter) {</span>
-<span class="fc bfc" id="L115" title="All 2 branches covered.">                if (params) {</span>
-<span class="fc" id="L116">                    sb.append(&quot;\nJava2Jdbc parameter converter(s):&quot;);</span>
-<span class="fc" id="L117">                    params = false;</span>
+<span class="fc" id="L114">        var params = true;</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">        for (var message : messages) {</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">            if (message instanceof JdbcMsg.InvalidParamConverter) {</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">                if (params) {</span>
+<span class="fc" id="L118">                    sb.append(&quot;\nJava2Jdbc parameter converter(s):&quot;);</span>
+<span class="fc" id="L119">                    params = false;</span>
                 }
-<span class="fc" id="L119">                sb.append('\n');</span>
-<span class="fc" id="L120">                sb.append(message.text());</span>
+<span class="fc" id="L121">                sb.append('\n');</span>
+<span class="fc" id="L122">                sb.append(message.text());</span>
             }
-<span class="fc" id="L122">        }</span>
+<span class="fc" id="L124">        }</span>
 
-<span class="fc" id="L124">        var returnType = true;</span>
-<span class="fc bfc" id="L125" title="All 2 branches covered.">        for (var message : messages) {</span>
-<span class="fc bfc" id="L126" title="All 2 branches covered.">            if (message instanceof JdbcMsg.InvalidReturnConverter) {</span>
-<span class="pc bpc" id="L127" title="1 of 2 branches missed.">                if (returnType) {</span>
-<span class="fc" id="L128">                    sb.append(&quot;\nJdbc2Java return converter:&quot;);</span>
-<span class="fc" id="L129">                    returnType = false;</span>
+<span class="fc" id="L126">        var returnType = true;</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        for (var message : messages) {</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">            if (message instanceof JdbcMsg.InvalidReturnConverter) {</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">                if (returnType) {</span>
+<span class="fc" id="L130">                    sb.append(&quot;\nJdbc2Java return converter:&quot;);</span>
+<span class="fc" id="L131">                    returnType = false;</span>
                 }
-<span class="fc" id="L131">                sb.append('\n');</span>
-<span class="fc" id="L132">                sb.append(message.text());</span>
+<span class="fc" id="L133">                sb.append('\n');</span>
+<span class="fc" id="L134">                sb.append(message.text());</span>
 
             }
-<span class="fc" id="L135">        }</span>
-<span class="fc" id="L136">        return sb.toString();</span>
+<span class="fc" id="L137">        }</span>
+<span class="fc" id="L138">        return sb.toString();</span>
     }
 
     // ------------------------------------------------------------------------
 
     public void addComment(String message, Object... args) {
-<span class="fc" id="L142">        var msg = this.ctx.logger.format(message, args);</span>
-<span class="fc" id="L143">        this.ctx.logger.debug(&quot;Add comment to code:&quot;, msg);</span>
-<span class="fc" id="L144">        this.code.add(&quot;// &quot; + msg + &quot;\n&quot;);</span>
-<span class="fc" id="L145">    }</span>
+<span class="fc" id="L144">        var msg = this.ctx.logger.format(message, args);</span>
+<span class="fc" id="L145">        this.ctx.logger.debug(&quot;Add comment to code:&quot;, msg);</span>
+<span class="fc" id="L146">        this.code.add(&quot;// &quot; + msg + &quot;\n&quot;);</span>
+<span class="fc" id="L147">    }</span>
 
     public void indent() {
-<span class="fc" id="L148">        this.code.indent();</span>
-<span class="fc" id="L149">    }</span>
+<span class="fc" id="L150">        this.code.indent();</span>
+<span class="fc" id="L151">    }</span>
 
     public void unindent() {
-<span class="fc" id="L152">        this.code.unindent();</span>
-<span class="fc" id="L153">    }</span>
+<span class="fc" id="L154">        this.code.unindent();</span>
+<span class="fc" id="L155">    }</span>
 
     public void beginControlFlow(String controlFlow, Object... args) {
-<span class="fc" id="L156">        this.code.beginControlFlow(controlFlow, args);</span>
-<span class="fc" id="L157">    }</span>
+<span class="fc" id="L158">        this.code.beginControlFlow(controlFlow, args);</span>
+<span class="fc" id="L159">    }</span>
 
     public void nextControlFlow(String controlFlow, Object... args) {
-<span class="fc" id="L160">        this.code.nextControlFlow(controlFlow, args);</span>
-<span class="fc" id="L161">    }</span>
+<span class="fc" id="L162">        this.code.nextControlFlow(controlFlow, args);</span>
+<span class="fc" id="L163">    }</span>
 
     public void endControlFlow() {
-<span class="fc" id="L164">        this.code.endControlFlow();</span>
-<span class="fc" id="L165">    }</span>
+<span class="fc" id="L166">        this.code.endControlFlow();</span>
+<span class="fc" id="L167">    }</span>
 
     public void addStatement(String format, Object... args) {
-<span class="fc" id="L168">        this.code.addStatement(format, args);</span>
-<span class="fc" id="L169">    }</span>
+<span class="fc" id="L170">        this.code.addStatement(format, args);</span>
+<span class="fc" id="L171">    }</span>
 
     public void add(String format, Object... args) {
-<span class="fc" id="L172">        this.code.add(format, args);</span>
-<span class="fc" id="L173">    }</span>
+<span class="fc" id="L174">        this.code.add(format, args);</span>
+<span class="fc" id="L175">    }</span>
 
     public void addCodeBlock(CodeBlock codeBlock) {
-<span class="fc" id="L176">        this.code.add(codeBlock);</span>
-<span class="fc" id="L177">    }</span>
+<span class="fc" id="L178">        this.code.add(codeBlock);</span>
+<span class="fc" id="L179">    }</span>
 
     public void addStatement(CodeBlock codeBlock) {
-<span class="fc" id="L180">        this.code.addStatement(codeBlock);</span>
-<span class="fc" id="L181">    }</span>
+<span class="fc" id="L182">        this.code.addStatement(codeBlock);</span>
+<span class="fc" id="L183">    }</span>
 
     // ------------------------------------------------------------------------
 
     public String paramName(String sourceName) {
-<span class="fc" id="L186">        return requireNonNull(parameterNames.get(sourceName));</span>
+<span class="fc" id="L188">        return requireNonNull(parameterNames.get(sourceName));</span>
     }
 
     public CodeBlock paramCodeBlock(String sourceName) {
-<span class="fc" id="L190">        return CodeBlock.of(&quot;$N&quot;, paramName(sourceName));</span>
+<span class="fc" id="L192">        return CodeBlock.of(&quot;$N&quot;, paramName(sourceName));</span>
     }
 
     void addIfAnnotationIsPresent(String format, ConfigService.@Nullable OptionValue&lt;?&gt; result) {
-<span class="fc bfc" id="L194" title="All 2 branches covered.">        if (result instanceof ConfigService.OptionValue.Dynamic&lt;?&gt; d) {</span>
-<span class="fc" id="L195">            this.code.add(checkValue(d));</span>
-<span class="fc" id="L196">            this.code.addStatement(format, accessValue(d));</span>
-<span class="fc bfc" id="L197" title="All 2 branches covered.">        } else if (result instanceof ConfigService.OptionValue.Static&lt;?&gt; s) {</span>
-<span class="fc" id="L198">            this.code.addStatement(format, accessValue(s));</span>
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        if (result instanceof ConfigService.OptionValue.Dynamic&lt;?&gt; d) {</span>
+<span class="fc" id="L197">            this.code.add(checkValue(d));</span>
+<span class="fc" id="L198">            this.code.addStatement(format, accessValue(d));</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">        } else if (result instanceof ConfigService.OptionValue.Static&lt;?&gt; s) {</span>
+<span class="fc" id="L200">            this.code.addStatement(format, accessValue(s));</span>
         }
-<span class="fc" id="L200">    }</span>
+<span class="fc" id="L202">    }</span>
 
     public CodeBlock checkValue(ConfigService.OptionValue.Dynamic&lt;?&gt; result) {
-<span class="fc" id="L203">        var varName = paramName(result.paramName());</span>
-<span class="fc" id="L204">        var option = result.option();</span>
-<span class="fc" id="L205">        var value = option.defaultValue();</span>
-<span class="fc bfc" id="L206" title="All 2 branches covered.">        var checkBlock = option.minValue() != null</span>
-<span class="fc" id="L207">                ? CodeBlock.of(&quot;$N &lt; $L&quot;, varName, option.minValue())</span>
-<span class="pc bpc" id="L208" title="1 of 2 branches missed.">                : value.getClass().isEnum()</span>
-<span class="fc" id="L209">                  ? CodeBlock.of(&quot;$N == $T.$L&quot;, varName, value.getClass(), value)</span>
-<span class="pc" id="L210">                  : CodeBlock.of(&quot;$N == $L&quot;, varName, value);</span>
-<span class="fc" id="L211">        return CodeBlock.builder()</span>
-<span class="fc" id="L212">                .beginControlFlow(&quot;if($L)&quot;, checkBlock)</span>
-<span class="fc" id="L213">                .addStatement(&quot;throw new $T($S + $L)&quot;, IllegalArgumentException.class, &quot;Invalid value for &quot; + varName + &quot;: &quot;, varName)</span>
-<span class="fc" id="L214">                .endControlFlow().build();</span>
+<span class="fc" id="L205">        var varName = paramName(result.paramName());</span>
+<span class="fc" id="L206">        var option = result.option();</span>
+<span class="fc" id="L207">        var value = option.defaultValue();</span>
+<span class="fc bfc" id="L208" title="All 2 branches covered.">        var checkBlock = option.minValue() != null</span>
+<span class="fc" id="L209">                ? CodeBlock.of(&quot;$N &lt; $L&quot;, varName, option.minValue())</span>
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">                : value.getClass().isEnum()</span>
+<span class="fc" id="L211">                ? CodeBlock.of(&quot;$N == $T.$L&quot;, varName, value.getClass(), value)</span>
+<span class="pc" id="L212">                : CodeBlock.of(&quot;$N == $L&quot;, varName, value);</span>
+<span class="fc" id="L213">        return CodeBlock.builder()</span>
+<span class="fc" id="L214">                .beginControlFlow(&quot;if($L)&quot;, checkBlock)</span>
+<span class="fc" id="L215">                .addStatement(&quot;throw new $T($S + $L)&quot;, IllegalArgumentException.class, &quot;Invalid value for &quot; + varName + &quot;: &quot;, varName)</span>
+<span class="fc" id="L216">                .endControlFlow().build();</span>
     }
 
     public CodeBlock accessValue(ConfigService.OptionValue&lt;?&gt; result) {
-<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (result instanceof ConfigService.OptionValue.Dynamic&lt;?&gt; d) {</span>
-<span class="fc" id="L219">            return paramCodeBlock(d.paramName());</span>
-<span class="pc bpc" id="L220" title="1 of 2 branches missed.">        } else if (result instanceof ConfigService.OptionValue.Static&lt;?&gt; s) {</span>
-<span class="fc" id="L221">            var value = s.value();</span>
-<span class="fc bfc" id="L222" title="All 2 branches covered.">            return value.getClass().isEnum()</span>
-<span class="fc" id="L223">                    ? CodeBlock.of(&quot;$T.$L&quot;, value.getClass(), value)</span>
-<span class="fc" id="L224">                    : CodeBlock.of(&quot;$L&quot;, value);</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">        if (result instanceof ConfigService.OptionValue.Dynamic&lt;?&gt; d) {</span>
+<span class="fc" id="L221">            return paramCodeBlock(d.paramName());</span>
+<span class="pc bpc" id="L222" title="1 of 2 branches missed.">        } else if (result instanceof ConfigService.OptionValue.Static&lt;?&gt; s) {</span>
+<span class="fc" id="L223">            var value = s.value();</span>
+<span class="fc bfc" id="L224" title="All 2 branches covered.">            return value.getClass().isEnum()</span>
+<span class="fc" id="L225">                    ? CodeBlock.of(&quot;$T.$L&quot;, value.getClass(), value)</span>
+<span class="fc" id="L226">                    : CodeBlock.of(&quot;$L&quot;, value);</span>
         }
-<span class="nc" id="L226">        throw new IllegalArgumentException(&quot;Unknown: &quot; + result);  // sanity-check</span>
+<span class="nc" id="L228">        throw new IllegalArgumentException(&quot;Unknown: &quot; + result);  // sanity-check</span>
     }
 
     // ------------------------------------------------------------------------
 
     public CodeBlock setNull(TypeMirror type, CodeBlock columnIndex) {
         // @formatter:off
-<span class="pc bpc" id="L233" title="2 of 9 branches missed.">        return switch (type.getKind()) { // will never cover all branches in black box test: JaCoCo:ignore</span>
-<span class="fc" id="L234">            case BOOLEAN -&gt; CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;BOOLEAN&quot;);</span>
-<span class="nc" id="L235">            case BYTE -&gt;    CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;TINYINT&quot;);</span>
-<span class="fc" id="L236">            case SHORT -&gt;   CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;SMALLINT&quot;);</span>
-<span class="fc" id="L237">            case INT -&gt;     CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;INTEGER&quot;);</span>
-<span class="fc" id="L238">            case LONG -&gt;    CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;BIGINT&quot;);</span>
-<span class="fc" id="L239">            case CHAR -&gt;    CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;CHAR&quot;);</span>
-<span class="fc" id="L240">            case FLOAT -&gt;   CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;REAL&quot;);</span>
-<span class="fc" id="L241">            case DOUBLE -&gt;  CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;DOUBLE&quot;);</span>
-<span class="nc" id="L242">            default -&gt; throw new ProcessorException(&quot;type must be primitive&quot;); // sanity-check</span>
+<span class="pc bpc" id="L235" title="2 of 9 branches missed.">        return switch (type.getKind()) {</span>
+<span class="fc" id="L236">            case BOOLEAN -&gt; CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;BOOLEAN&quot;);</span>
+<span class="nc" id="L237">            case BYTE -&gt;    CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;TINYINT&quot;);</span>
+<span class="fc" id="L238">            case SHORT -&gt;   CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;SMALLINT&quot;);</span>
+<span class="fc" id="L239">            case INT -&gt;     CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;INTEGER&quot;);</span>
+<span class="fc" id="L240">            case LONG -&gt;    CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;BIGINT&quot;);</span>
+<span class="fc" id="L241">            case CHAR -&gt;    CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;CHAR&quot;);</span>
+<span class="fc" id="L242">            case FLOAT -&gt;   CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;REAL&quot;);</span>
+<span class="fc" id="L243">            case DOUBLE -&gt;  CodeBlock.of(&quot;stmt.setNull($L, $T.$L)&quot;, columnIndex, Types.class, &quot;DOUBLE&quot;);</span>
+<span class="nc" id="L244">            default -&gt; throw new ProcessorException(&quot;type must be primitive&quot;); // sanity-check</span>
         };
         // @formatter:on
     }
 
     CodeBlock lambda(SQLNameDV jdbcName, OptionalFlag optional, Jdbc2JavaConverter converter) {
-<span class="fc" id="L248">        var lambda = new TargetMethod(this);</span>
-<span class="fc bfc" id="L249" title="All 2 branches covered.">        if (converter.isColumn()) {</span>
+<span class="fc" id="L250">        var lambda = new TargetMethod(this);</span>
+<span class="fc bfc" id="L251" title="All 2 branches covered.">        if (converter instanceof Jdbc2JavaConverter.ColumnConverter column) {</span>
             ColumnIndex index;
-<span class="fc bfc" id="L251" title="All 2 branches covered.">            if (!jdbcName.hasName()) {</span>
-<span class="fc" id="L252">                index = ColumnIndex.ofValue(1);</span>
+<span class="fc bfc" id="L253" title="All 2 branches covered.">            if (!jdbcName.hasName()) {</span>
+<span class="fc" id="L254">                index = ColumnIndex.ofValue(1);</span>
             } else {
-<span class="fc" id="L254">                index = ColumnIndex.ofVariable(&quot;index&quot;, jdbcName);</span>
-<span class="fc" id="L255">                this.addStatement(&quot;var $N = resultSet.findColumn($S)&quot;, index.columnIndexVar(), index.columnName());</span>
+<span class="fc" id="L256">                index = ColumnIndex.ofVariable(&quot;index&quot;, jdbcName);</span>
+<span class="fc" id="L257">                this.addStatement(&quot;var $N = resultSet.findColumn($S)&quot;, index.columnIndexVar(), index.columnName());</span>
             }
-<span class="fc" id="L257">            lambda.add(&quot;(rs) -&gt; {\n&quot;);</span>
-<span class="fc" id="L258">            lambda.indent();</span>
-<span class="fc" id="L259">            converter.addColumnByIndex(lambda, &quot;row&quot;, index, optional);</span>
-<span class="fc" id="L260">            lambda.addStatement(&quot;return row&quot;);</span>
-<span class="fc" id="L261">            lambda.unindent();</span>
-<span class="fc" id="L262">            lambda.add(&quot;}&quot;);</span>
-<span class="fc" id="L263">        } else {</span>
-<span class="fc" id="L264">            lambda.add(&quot;(rs) -&gt; {\n&quot;);</span>
-<span class="fc" id="L265">            lambda.indent();</span>
-<span class="fc" id="L266">            converter.addResultSetToRow(lambda, &quot;row&quot;, optional);</span>
-<span class="fc" id="L267">            lambda.addStatement(&quot;return row&quot;);</span>
-<span class="fc" id="L268">            lambda.unindent();</span>
-<span class="fc" id="L269">            lambda.add(&quot;}&quot;);</span>
+<span class="fc" id="L259">            lambda.add(&quot;(rs) -&gt; {\n&quot;);</span>
+<span class="fc" id="L260">            lambda.indent();</span>
+<span class="fc" id="L261">            column.addColumnByIndex(lambda, &quot;row&quot;, index, optional);</span>
+<span class="fc" id="L262">            lambda.addStatement(&quot;return row&quot;);</span>
+<span class="fc" id="L263">            lambda.unindent();</span>
+<span class="fc" id="L264">            lambda.add(&quot;}&quot;);</span>
+<span class="pc bpc" id="L265" title="1 of 2 branches missed.">        } else if (converter instanceof Jdbc2JavaConverter.RowConverter row) {</span>
+<span class="fc" id="L266">            lambda.add(&quot;(rs) -&gt; {\n&quot;);</span>
+<span class="fc" id="L267">            lambda.indent();</span>
+<span class="fc" id="L268">            row.addResultSetToRow(lambda, &quot;row&quot;, optional);</span>
+<span class="fc" id="L269">            lambda.addStatement(&quot;return row&quot;);</span>
+<span class="fc" id="L270">            lambda.unindent();</span>
+<span class="fc" id="L271">            lambda.add(&quot;}&quot;);</span>
+        } else {
+<span class="nc" id="L273">            throw new IllegalArgumentException(&quot;Unsupported JDBC-to-Java converter type: &quot; + converter.getClass().getName());</span>
         }
-<span class="fc" id="L271">        return lambda.build();</span>
+<span class="fc" id="L275">        return lambda.build();</span>
     }
 
     // ------------------------------------------------------------------------
 
     public void addThrowColumnWasNull(ColumnIndex index) {
-<span class="fc bfc" id="L277" title="All 2 branches covered.">        if (index.hasColumnName()) {</span>
-<span class="fc" id="L278">            this.code.addStatement(&quot;throw new $T($S + $L)&quot;, NullPointerException.class, &quot;JDBC column was null on name '&quot; + index.columnName() + &quot;' with index: &quot;, index.columnIndexVar());</span>
+<span class="fc bfc" id="L281" title="All 2 branches covered.">        if (index.hasColumnName()) {</span>
+<span class="fc" id="L282">            this.code.addStatement(&quot;throw new $T($S + $L)&quot;, NullPointerException.class, &quot;JDBC column was null on name '&quot; + index.columnName() + &quot;' with index: &quot;, index.columnIndexVar());</span>
         } else {
-<span class="fc" id="L280">            this.code.addStatement(&quot;throw new $T($S + $L)&quot;, NullPointerException.class, &quot;JDBC column was null on index: &quot;, index.columnIndexVar());</span>
+<span class="fc" id="L284">            this.code.addStatement(&quot;throw new $T($S + $L)&quot;, NullPointerException.class, &quot;JDBC column was null on index: &quot;, index.columnIndexVar());</span>
         }
-<span class="fc" id="L282">    }</span>
+<span class="fc" id="L286">    }</span>
 
     // ------------------------------------------------------------------------
 
     void addCheckNoRows(JdbcNoRows.Kind noRows, OptionalFlag optional) {
-<span class="pc bpc" id="L287" title="1 of 3 branches missed.">        switch (noRows) { // JaCoCo:ignore</span>
+<span class="pc bpc" id="L291" title="1 of 3 branches missed.">        switch (noRows) {</span>
             case THROW_EXCEPTION -&gt; {
-<span class="fc" id="L289">                this.beginControlFlow(&quot;if(!rs.next())&quot;);</span>
-<span class="fc" id="L290">                this.addStatement(&quot;throw new $T()&quot;, JdbcEmptyResultSetException.class);</span>
-<span class="fc" id="L291">                this.endControlFlow();</span>
-<span class="fc" id="L292">            }</span>
+<span class="fc" id="L293">                this.beginControlFlow(&quot;if(!rs.next())&quot;);</span>
+<span class="fc" id="L294">                this.addStatement(&quot;throw new $T()&quot;, JdbcEmptyResultSetException.class);</span>
+<span class="fc" id="L295">                this.endControlFlow();</span>
+<span class="fc" id="L296">            }</span>
             case RETURN_NULL -&gt; {
-<span class="fc" id="L294">                this.beginControlFlow(&quot;if(!rs.next())&quot;);</span>
-<span class="fc bfc" id="L295" title="All 2 branches covered.">                if (optional.isOptionalType()) {</span>
+<span class="fc" id="L298">                this.beginControlFlow(&quot;if(!rs.next())&quot;);</span>
+<span class="fc bfc" id="L299" title="All 2 branches covered.">                if (optional.isOptionalType()) {</span>
                     // JdbcRow is the only case for this
-<span class="fc" id="L297">                    this.addStatement(&quot;return $T.empty()&quot;, Optional.class);</span>
+<span class="fc" id="L301">                    this.addStatement(&quot;return $T.empty()&quot;, Optional.class);</span>
                 } else {
-<span class="fc" id="L299">                    this.addStatement(&quot;return null&quot;);</span>
+<span class="fc" id="L303">                    this.addStatement(&quot;return null&quot;);</span>
                 }
-<span class="fc" id="L301">                this.endControlFlow();</span>
-<span class="fc" id="L302">            }</span>
-<span class="nc" id="L303">            default -&gt; throw new ProcessorException(&quot;invalid converter: &quot; + noRows); // sanity-check</span>
+<span class="fc" id="L305">                this.endControlFlow();</span>
+<span class="fc" id="L306">            }</span>
+<span class="nc" id="L307">            default -&gt; throw new ProcessorException(&quot;invalid converter: &quot; + noRows); // sanity-check</span>
         }
-<span class="fc" id="L305">    }</span>
+<span class="fc" id="L309">    }</span>
 
     // ------------------------------------------------------------------------
 
     void addCheckNoMoreRows(JdbcNoMoreRows.Kind noMoreRows) {
-<span class="pc bpc" id="L310" title="1 of 3 branches missed.">        switch (noMoreRows) { // JaCoCo:ignore</span>
+<span class="pc bpc" id="L314" title="1 of 3 branches missed.">        switch (noMoreRows) {</span>
             case THROW_EXCEPTION -&gt; {
-<span class="fc" id="L312">                this.beginControlFlow(&quot;if(rs.next())&quot;);</span>
-<span class="fc" id="L313">                this.addStatement(&quot;throw new $T()&quot;, JdbcUnexpectedRowException.class);</span>
-<span class="fc" id="L314">                this.endControlFlow();</span>
-<span class="fc" id="L315">            }</span>
-<span class="fc" id="L316">            case IGNORE -&gt; this.addStatement(&quot;// ignore more results &quot;);</span>
+<span class="fc" id="L316">                this.beginControlFlow(&quot;if(rs.next())&quot;);</span>
+<span class="fc" id="L317">                this.addStatement(&quot;throw new $T()&quot;, JdbcUnexpectedRowException.class);</span>
+<span class="fc" id="L318">                this.endControlFlow();</span>
+<span class="fc" id="L319">            }</span>
+<span class="fc" id="L320">            case IGNORE -&gt; this.addStatement(&quot;// ignore more results &quot;);</span>
             default -&gt;
-<span class="nc" id="L318">                    throw new ProcessorException(&quot;invalid converter: &quot; + noMoreRows); // sanity-check</span>
+<span class="nc" id="L322">                    throw new ProcessorException(&quot;invalid converter: &quot; + noMoreRows); // sanity-check</span>
         }
-<span class="fc" id="L320">    }</span>
+<span class="fc" id="L324">    }</span>
 
     // ------------------------------------------------------------------------
 
     public String tempVarName(String varName) {
-<span class="fc bfc" id="L325" title="All 2 branches covered.">        if (usedNames.add(varName)) {</span>
-<span class="fc" id="L326">            return varName;</span>
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        if (usedNames.add(varName)) {</span>
+<span class="fc" id="L330">            return varName;</span>
         }
-<span class="fc" id="L328">        for (int i = 2; ; i++) {</span>
-<span class="fc" id="L329">            var candidate = varName + &quot;_&quot; + i;</span>
-<span class="fc bfc" id="L330" title="All 2 branches covered.">            if (usedNames.add(candidate)) {</span>
-<span class="fc" id="L331">                return candidate;</span>
+<span class="fc" id="L332">        for (int i = 2; ; i++) {</span>
+<span class="fc" id="L333">            var candidate = varName + &quot;_&quot; + i;</span>
+<span class="fc bfc" id="L334" title="All 2 branches covered.">            if (usedNames.add(candidate)) {</span>
+<span class="fc" id="L335">                return candidate;</span>
             }
         }
     }
 
     public CodeBlock tempVarName(CodeBlock varName) {
-<span class="fc" id="L337">        var varName0 = varName.toString().replaceAll(&quot;[^\\p{IsAlphabetic}\\d_$]+&quot;, &quot;_&quot;);</span>
-<span class="fc" id="L338">        var name = tempVarName(varName0);</span>
-<span class="fc" id="L339">        return CodeBlock.of(name);</span>
+<span class="fc" id="L341">        var varName0 = varName.toString().replaceAll(&quot;[^\\p{IsAlphabetic}\\d_$]+&quot;, &quot;_&quot;);</span>
+<span class="fc" id="L342">        var name = tempVarName(varName0);</span>
+<span class="fc" id="L343">        return CodeBlock.of(name);</span>
     }
 
 }

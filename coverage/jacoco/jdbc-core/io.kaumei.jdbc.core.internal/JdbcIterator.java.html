@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JdbcIterator.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-core</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.core.internal</a> &gt; <span class="el_source">JdbcIterator.java</span></div><h1>JdbcIterator.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.core.internal;
+
+import io.kaumei.jdbc.core.JdbcException;
+import io.kaumei.jdbc.annotation.JdbcToJava;
+import org.jspecify.annotations.Nullable;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import static java.util.Objects.requireNonNull;
+
+public class JdbcIterator&lt;T&gt; implements Iterator&lt;T&gt; {
+
+    protected final ResultSet rs;
+    private final JdbcToJava.Row&lt;T&gt; rowGetter;
+    // ----- state
+    private @Nullable Boolean hasNextRow;
+
+<span class="fc" id="L25">    public JdbcIterator(ResultSet rs, JdbcToJava.Row&lt;T&gt; rowGetter) {</span>
+<span class="fc" id="L26">        this.rs = requireNonNull(rs);</span>
+<span class="fc" id="L27">        this.rowGetter = requireNonNull(rowGetter);</span>
+<span class="fc" id="L28">    }</span>
+
+    @Override
+    public boolean hasNext() {
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        if (this.hasNextRow == null) {</span>
+            try {
+<span class="fc" id="L34">                this.hasNextRow = this.rs.next();</span>
+<span class="nc" id="L35">            } catch (SQLException e) {</span>
+<span class="nc" id="L36">                throw new JdbcException(e.getMessage(), e);</span>
+<span class="fc" id="L37">            }</span>
+        }
+<span class="fc" id="L39">        return this.hasNextRow;</span>
+    }
+
+    @Override
+    public @Nullable T next() {
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (hasNext()) {</span>
+<span class="fc" id="L45">            this.hasNextRow = null;</span>
+            try {
+<span class="fc" id="L47">                return this.rowGetter.mapRowToJava(rs);</span>
+<span class="nc" id="L48">            } catch (SQLException e) {</span>
+<span class="nc" id="L49">                throw new JdbcException(e.getMessage(), e);</span>
+            }
+        }
+<span class="nc" id="L52">        throw new NoSuchElementException();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

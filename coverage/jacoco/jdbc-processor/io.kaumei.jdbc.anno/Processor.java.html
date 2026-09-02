@@ -27,6 +27,7 @@ import java.util.Set;
 
 @SupportedAnnotationTypes({
         Processor.JDBC_NATIVE_NAME,
+        Processor.JDBC_CALL_NAME,
         Processor.JDBC_SELECT_NAME,
         Processor.JDBC_BATCH_UPDATE_NAME,
         Processor.JDBC_UPDATE_NAME,
@@ -37,12 +38,13 @@ import java.util.Set;
         Processor.OPTION_KEY_CONFIG,
         Processor.OPTION_KEY_LOG_LEVEL,
 })
-<span class="fc" id="L40">public final class Processor extends AbstractProcessor {</span>
+<span class="fc" id="L41">public final class Processor extends AbstractProcessor {</span>
 
     // @formatter:off
     public static final String JDBC_CONFIG_NAME       = &quot;io.kaumei.jdbc.annotation.config.JdbcConfig&quot;;
     public static final String JDBC_BATCH_UPDATE_NAME = &quot;io.kaumei.jdbc.annotation.JdbcBatchUpdate&quot;;
     public static final String JDBC_NATIVE_NAME       = &quot;io.kaumei.jdbc.annotation.JdbcNative&quot;;
+    public static final String JDBC_CALL_NAME         = &quot;io.kaumei.jdbc.annotation.JdbcCall&quot;;
     public static final String JDBC_SELECT_NAME       = &quot;io.kaumei.jdbc.annotation.JdbcSelect&quot;;
     public static final String JDBC_UPDATE_NAME       = &quot;io.kaumei.jdbc.annotation.JdbcUpdate&quot;;
 
@@ -62,18 +64,16 @@ import java.util.Set;
             SPDX-License-Identifier: CC0-1.0
             &quot;&quot;&quot;;
 
-<span class="fc" id="L65">    public static final AnnotationSpec GENERATED = AnnotationSpec.builder(Generated.class)</span>
-<span class="fc" id="L66">            .addMember(&quot;value&quot;, &quot;$S&quot;, Processor.class.getCanonicalName())</span>
-<span class="fc" id="L67">            .addMember(&quot;date&quot;, &quot;$S&quot;, OffsetDateTime.now().toString())</span>
-<span class="fc" id="L68">            .build();</span>
+<span class="fc" id="L67">    public static final AnnotationSpec GENERATED = AnnotationSpec.builder(Generated.class)</span>
+<span class="fc" id="L68">            .addMember(&quot;value&quot;, &quot;$S&quot;, Processor.class.getCanonicalName())</span>
+<span class="fc" id="L69">            .addMember(&quot;date&quot;, &quot;$S&quot;, OffsetDateTime.now().toString())</span>
+<span class="fc" id="L70">            .build();</span>
 
     // ---------------------------------------------------------------
 
     // ----- services
-    @Nullable
-    private Context ctx;
-    @Nullable
-    private JavaMessenger logger;
+    private @Nullable Context ctx;
+    private @Nullable JavaMessenger logger;
 
     // ----- state
 <span class="fc" id="L79">    private int roundCount = 0;</span>
@@ -196,7 +196,7 @@ import java.util.Set;
 <span class="fc" id="L196">        try (var stream = Files.list(folder)) {</span>
 <span class="fc" id="L197">            Optional&lt;Path&gt; last = stream.filter(p -&gt; p.getFileName().toString().startsWith(&quot;data-&quot;))</span>
 <span class="fc" id="L198">                    .sorted()                         // lexicographically ascending</span>
-<span class="fc" id="L199">                    .reduce((first, second) -&gt; second); // keep only the last</span>
+<span class="pc" id="L199">                    .reduce((first, second) -&gt; second); // keep only the last</span>
 <span class="fc" id="L200">            return last.map(path -&gt; path.getFileName().toString()).orElse(&quot;&quot;);</span>
         }
     }

@@ -4,16 +4,16 @@
  */
 package io.kaumei.jdbc.anno.java2jdbc;
 
-import io.kaumei.jdbc.JavaToJdbcConverter;
 import io.kaumei.jdbc.anno.ProcessorEnvironment;
 import io.kaumei.jdbc.anno.ProcessorException;
 import io.kaumei.jdbc.anno.ProcessorSteps;
 import io.kaumei.jdbc.anno.ctx.Context;
+import io.kaumei.jdbc.anno.model.Visibility;
 import io.kaumei.jdbc.anno.msg.JdbcMsg;
 import io.kaumei.jdbc.anno.msg.Msg;
 import io.kaumei.jdbc.anno.store.*;
+import io.kaumei.jdbc.core.JavaToJdbcConverter;
 
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -96,131 +96,135 @@ public class Java2JdbcService implements ProcessorSteps {
 
     private void jdbcConverter(String methodName, TypeMirror type) {
 <span class="fc" id="L98">        var source = SourceDV.generic(&quot;PreparedStatement.&quot; + methodName);</span>
-<span class="fc" id="L99">        var converter = new ConverterJdbcStatement(type, source, methodName);</span>
-<span class="fc" id="L100">        this.storeService.basic().add(StoreID.of(type), converter);</span>
-<span class="fc" id="L101">    }</span>
+
+<span class="fc" id="L100">        var converter = new ConverterJdbcStatement(type, source, Visibility.PUBLIC_VISIBILITY, methodName);</span>
+<span class="fc" id="L101">        this.storeService.basic().add(StoreID.of(type), converter);</span>
+<span class="fc" id="L102">    }</span>
 
     private void staticConverter(String methodName, TypeMirror type) {
-<span class="fc" id="L104">        var source = SourceDV.generic(&quot;JavaToJdbcConverter.&quot; + methodName);</span>
-<span class="fc" id="L105">        var converter = new ConverterStaticStatement(type, source, JavaToJdbcConverter.class.getCanonicalName(), methodName);</span>
-<span class="fc" id="L106">        this.storeService.basic().add(StoreID.of(type), converter);</span>
-<span class="fc" id="L107">    }</span>
+<span class="fc" id="L105">        var source = SourceDV.generic(&quot;JavaToJdbcConverter.&quot; + methodName);</span>
+<span class="fc" id="L106">        var converter = new ConverterStaticStatement(type, source, Visibility.PUBLIC_VISIBILITY, JavaToJdbcConverter.class.getCanonicalName(), methodName);</span>
+<span class="fc" id="L107">        this.storeService.basic().add(StoreID.of(type), converter);</span>
+<span class="fc" id="L108">    }</span>
 
     // ------------------------------------------------------------------------
 
     private void processConfig(ProcessorEnvironment roundEnv) {
-<span class="fc bfc" id="L112" title="All 2 branches covered.">        for (var executable0 : roundEnv.javaToJdbc()) {</span>
-<span class="fc" id="L113">            this.ctx.logger.acceptWithDebugFlag(executable0, (executable) -&gt; {</span>
-<span class="fc" id="L114">                var converter = this.converterFactory.converterMethod(executable);</span>
-<span class="fc" id="L115">                this.storeService.global().addOpt(converter);</span>
-<span class="fc" id="L116">            });</span>
-<span class="fc" id="L117">        }</span>
-<span class="fc" id="L118">    }</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        for (var executable0 : roundEnv.javaToJdbc()) {</span>
+<span class="fc" id="L114">            this.ctx.logger.acceptWithDebugFlag(executable0, (executable) -&gt; {</span>
+<span class="fc" id="L115">                var converter = this.converterFactory.converterMethod(executable);</span>
+<span class="fc" id="L116">                this.storeService.global().addOpt(converter);</span>
+<span class="fc" id="L117">            });</span>
+<span class="fc" id="L118">        }</span>
+<span class="fc" id="L119">    }</span>
 
     // ------------------------------------------------------------------------
 
     private void processLocal(ProcessorEnvironment roundEnv) {
-<span class="fc bfc" id="L123" title="All 2 branches covered.">        for (var elem : roundEnv.jdbcInterfaces()) {</span>
-<span class="fc" id="L124">            var localStore = this.storeService.local(elem);</span>
-<span class="fc bfc" id="L125" title="All 2 branches covered.">            for (var child : elem.getEnclosedElements()) {</span>
-<span class="fc bfc" id="L126" title="All 2 branches covered.">                if (child instanceof ExecutableElement executable0</span>
-<span class="fc bfc" id="L127" title="All 2 branches covered.">                        &amp;&amp; ctx.JAVA_TO_JDBC.hasAnno(executable0)) {</span>
-<span class="fc" id="L128">                    this.ctx.logger.acceptWithDebugFlag(executable0, (executable) -&gt; {</span>
-<span class="fc" id="L129">                        var converter = this.converterFactory.converterMethod(executable);</span>
-<span class="fc" id="L130">                        localStore.addOpt(converter);</span>
-<span class="fc" id="L131">                    });</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        for (var elem : roundEnv.jdbcInterfaces()) {</span>
+<span class="fc" id="L125">            var localStore = this.storeService.local(elem);</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">            for (var child : elem.getEnclosedElements()) {</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">                if (child instanceof ExecutableElement executable0</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">                        &amp;&amp; ctx.JAVA_TO_JDBC.hasAnno(executable0)) {</span>
+<span class="fc" id="L129">                    this.ctx.logger.acceptWithDebugFlag(executable0, (executable) -&gt; {</span>
+<span class="fc" id="L130">                        var converter = this.converterFactory.converterMethod(executable);</span>
+<span class="fc" id="L131">                        localStore.addOpt(converter);</span>
+<span class="fc" id="L132">                    });</span>
                 }
-<span class="fc" id="L133">            }</span>
-<span class="fc" id="L134">        }</span>
-<span class="fc" id="L135">    }</span>
+<span class="fc" id="L134">            }</span>
+<span class="fc" id="L135">        }</span>
+<span class="fc" id="L136">    }</span>
 
     // ------------------------------------------------------------------------
 
     private void processMethods() {
-<span class="fc bfc" id="L140" title="All 2 branches covered.">        for (var sm : ctx.sourceMethodService.values()) {</span>
-<span class="fc" id="L141">            var store = this.storeService.getStoreFor(sm.method());</span>
-<span class="fc" id="L142">            sm.parameter().forEachSearchRequest(search -&gt; this.storeService.process(store, search, this.converterFactory::tryToCreate));</span>
-<span class="fc" id="L143">        }</span>
-<span class="fc" id="L144">    }</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        for (var sm : ctx.sourceMethodService.values()) {</span>
+<span class="fc" id="L142">            var store = this.storeService.getStoreFor(sm.method());</span>
+<span class="fc" id="L143">            sm.parameter().forEachSearchRequest(search -&gt; this.storeService.process(store, search, this.converterFactory::tryToCreate));</span>
+<span class="fc" id="L144">        }</span>
+<span class="fc" id="L145">    }</span>
 
     // ------------------------------------------------------------------------
 
     private void resolveHierarchy(Store&lt;Java2JdbcConverter&gt; store, SearchKey searchKey) {
-<span class="fc" id="L149">        var result = store.searchHierarchy(searchKey);</span>
-<span class="fc" id="L150">        store.add(result);</span>
-<span class="fc" id="L151">    }</span>
+<span class="fc" id="L150">        var result = store.searchHierarchy(searchKey);</span>
+<span class="fc" id="L151">        store.add(result);</span>
+<span class="fc" id="L152">    }</span>
 
     // ------------------------------------------------------------------------
 
     private void resolvePlaceholder(Store&lt;Java2JdbcConverter&gt; store, StoreID storeId, Converter.Placeholder placeholder) {
-<span class="fc" id="L156">        resolvePlaceholder(new LinkedCycle&lt;&gt;(), store, storeId, placeholder);</span>
-<span class="fc" id="L157">    }</span>
+<span class="fc" id="L157">        resolvePlaceholder(new LinkedCycle&lt;&gt;(), store, storeId, placeholder);</span>
+<span class="fc" id="L158">    }</span>
 
     private SearchResult&lt;Java2JdbcConverter&gt; resolvePlaceholder(LinkedCycle&lt;StoreID&gt; cycle,
                                                                 Store&lt;Java2JdbcConverter&gt; store,
                                                                 StoreID storeId,
                                                                 Converter.Placeholder placeholder0) {
-<span class="pc bpc" id="L163" title="1 of 2 branches missed.">        if (!cycle.push(storeId)) {</span>
-<span class="nc" id="L164">            return SearchResult.cycle(storeId, cycle.asList());</span>
+<span class="pc bpc" id="L164" title="1 of 2 branches missed.">        if (!cycle.push(storeId)) {</span>
+<span class="nc" id="L165">            return SearchResult.cycle(storeId, cycle.asList());</span>
         }
 
         try {
-<span class="fc" id="L168">            var placeholder = (Java2JdbcConverter.Placeholder) placeholder0;</span>
+<span class="fc" id="L169">            var placeholder = (Java2JdbcConverter.Placeholder) placeholder0;</span>
 
             // check if we already resolved this placeholder
-<span class="fc" id="L171">            var result = store.get(storeId);</span>
-<span class="pc bpc" id="L172" title="1 of 2 branches missed.">            if (!result.hasPlaceholder()) {</span>
-<span class="nc" id="L173">                return result;</span>
+<span class="fc" id="L172">            var result = store.get(storeId);</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">            if (!result.hasPlaceholder()) {</span>
+<span class="nc" id="L174">                return result;</span>
             }
 
-<span class="fc" id="L176">            var other = store.search(placeholder.otherPlaceholder().toStoreId(), false);</span>
-<span class="pc bpc" id="L177" title="1 of 2 branches missed.">            if (other.hasPlaceholder()) {</span>
-<span class="nc" id="L178">                other = resolvePlaceholder(cycle, result.store(), other.storeId(), other.placeholder());</span>
+<span class="fc" id="L177">            var other = store.search(placeholder.otherPlaceholder().toStoreId(), false);</span>
+<span class="fc bfc" id="L178" title="All 2 branches covered.">            if (other.hasPlaceholder()) {</span>
+<span class="fc" id="L179">                other = resolvePlaceholder(cycle, result.store(), other.storeId(), other.placeholder());</span>
             }
 
-<span class="pc bpc" id="L181" title="1 of 2 branches missed.">            if (other.state() == SearchState.DYNAMIC_CYCLE) {</span>
-<span class="nc" id="L182">                return store.markInvalid(storeId, other.messages());</span>
-<span class="fc bfc" id="L183" title="All 2 branches covered.">            } else if (!other.hasConverter()) {</span>
-<span class="fc" id="L184">                return store.markInvalid(storeId,</span>
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">            if (other.state() == SearchState.DYNAMIC_CYCLE) {</span>
+<span class="nc" id="L183">                return store.markInvalid(storeId, other.messages());</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">            } else if (!other.hasConverter()) {</span>
+<span class="fc" id="L185">                return store.markInvalid(storeId,</span>
                         JdbcMsg.INVALID_DEPENDENT_CONVERTER,
-<span class="fc" id="L186">                        Set.of(placeholder.otherPlaceholder().toStoreId()));</span>
+<span class="fc" id="L187">                        Set.of(placeholder.otherPlaceholder().toStoreId()));</span>
             }
 
-<span class="fc" id="L189">            var resolved = placeholder.resolve(other.converter());</span>
-<span class="fc" id="L190">            return store.markResolve(storeId, resolved);</span>
+<span class="fc" id="L190">            var resolved = placeholder.resolve(other.converter());</span>
+<span class="fc" id="L191">            return store.markResolve(storeId, resolved);</span>
         } finally {
-<span class="fc" id="L192">            cycle.pop();</span>
+<span class="fc" id="L193">            cycle.pop();</span>
         }
     }
 
     // ------------------------------------------------------------------------
 
-    public Msg.Result&lt;Java2JdbcConverter&gt; searchJava(Element element, SearchKey search) {
-<span class="fc" id="L199">        var result = searchJava(this.storeService.getStoreFor(element), search);</span>
-<span class="fc bfc" id="L200" title="All 2 branches covered.">        if (result.hasMessages()) {</span>
-<span class="fc" id="L201">            return Msg.result(result.messages());</span>
+    public Msg.Result&lt;Java2JdbcConverter&gt; searchJava(ExecutableElement element, SearchKey search) {
+<span class="fc" id="L200">        var result = searchJava(this.storeService.getStoreFor(element), search);</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">        if (result.hasMessages()) {</span>
+<span class="fc" id="L202">            return Msg.result(result.messages());</span>
         }
-<span class="fc" id="L203">        return Msg.result(result.value());</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">        if (!this.ctx.visibilityService.isVisible(element, result.value().visibility())) {</span>
+<span class="fc" id="L205">            return Msg.result(JdbcMsg.JAVA_TO_JDBC_METHOD_MUST_BE_VISIBLE);</span>
+        }
+<span class="fc" id="L207">        return Msg.result(result.value());</span>
     }
 
     private Msg.Result&lt;Java2JdbcConverter&gt; searchJava(Store&lt;Java2JdbcConverter&gt; store, SearchKey search) {
-<span class="fc" id="L207">        var result = store.search(search.toStoreId(), true);</span>
-<span class="fc bfc" id="L208" title="All 2 branches covered.">        if (result.hasMessages()) {</span>
-<span class="fc" id="L209">            return Msg.result(result.messages());</span>
-<span class="fc bfc" id="L210" title="All 2 branches covered.">        } else if (!ctx.isSubtype(search.type(), result.converter().type())) {</span>
-<span class="fc" id="L211">            return Msg.result(JdbcMsg.INCOMPATIBLE_TYPE);</span>
+<span class="fc" id="L211">        var result = store.search(search.toStoreId(), true);</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">        if (result.hasMessages()) {</span>
+<span class="fc" id="L213">            return Msg.result(result.messages());</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">        } else if (!ctx.isSubtype(search.type(), result.converter().type())) {</span>
+<span class="fc" id="L215">            return Msg.result(JdbcMsg.INCOMPATIBLE_TYPE);</span>
         }
-<span class="fc" id="L213">        return Msg.result(result.converter());</span>
+<span class="fc" id="L217">        return Msg.result(result.converter());</span>
     }
 
     // ------------------------------------------------------------------------
 
     public void dump(StringBuilder out) {
-<span class="fc" id="L219">        this.storeService.dump(out);</span>
-<span class="fc" id="L220">    }</span>
+<span class="fc" id="L223">        this.storeService.dump(out);</span>
+<span class="fc" id="L224">    }</span>
 
     public String csvStats() {
-<span class="fc" id="L223">        return this.storeService.csvStats();</span>
+<span class="fc" id="L227">        return this.storeService.csvStats();</span>
     }
 
 }

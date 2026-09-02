@@ -16,62 +16,70 @@ import javax.lang.model.element.TypeElement;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
 public class SourceMethodService implements ProcessorSteps {
+
     // ----- services
     private final Context ctx;
     // ----- state
 <span class="fc" id="L27">    private final Map&lt;ExecutableElement, SourceMethod&gt; methods = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L28">    private final Map&lt;ExecutableElement, RuntimeException&gt; failures = new LinkedHashMap&lt;&gt;();</span>
 
-<span class="fc" id="L29">    public SourceMethodService(Context ctx) {</span>
-<span class="fc" id="L30">        this.ctx = requireNonNull(ctx);</span>
-<span class="fc" id="L31">    }</span>
+<span class="fc" id="L30">    public SourceMethodService(Context ctx) {</span>
+<span class="fc" id="L31">        this.ctx = requireNonNull(ctx);</span>
+<span class="fc" id="L32">    }</span>
 
     // ------------------------------------------------------------------------
 
     @Override
     public void process(ProcessorEnvironment roundEnv) {
-<span class="fc bfc" id="L37" title="All 2 branches covered.">        for (var entry : roundEnv.jdbcInterfaces()) {</span>
-<span class="fc" id="L38">            this.ctx.logger.acceptWithDebugFlag(entry, this::resolveMethods);</span>
-<span class="fc" id="L39">        }</span>
-<span class="fc" id="L40">    }</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        for (var entry : roundEnv.jdbcInterfaces()) {</span>
+<span class="fc" id="L39">            this.ctx.logger.acceptWithDebugFlag(entry, this::resolveMethods);</span>
+<span class="fc" id="L40">        }</span>
+<span class="fc" id="L41">    }</span>
 
     private void resolveMethods(TypeElement iface) {
-<span class="fc" id="L43">        this.ctx.logger.info(&quot;Resolve methods&quot;, iface);</span>
-        // ----- process methods
+<span class="fc" id="L44">        this.ctx.logger.info(&quot;Resolve methods&quot;, iface);</span>
 <span class="fc bfc" id="L45" title="All 2 branches covered.">        for (var child : iface.getEnclosedElements()) {</span>
-<span class="fc bfc" id="L46" title="All 2 branches covered.">            if (!child.getModifiers().contains(Modifier.STATIC)</span>
-<span class="fc bfc" id="L47" title="All 2 branches covered.">                    &amp;&amp; !child.getModifiers().contains(Modifier.DEFAULT)</span>
-<span class="pc bpc" id="L48" title="2 of 4 branches missed.">                    &amp;&amp; child.getKind() == ElementKind.METHOD</span>
-<span class="fc" id="L49">                    &amp;&amp; child instanceof ExecutableElement method) {</span>
-<span class="fc" id="L50">                resolveMethod(method);</span>
+<span class="fc" id="L46">            var modifiers = child.getModifiers();</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">            if (child.getKind() == ElementKind.METHOD</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">                    &amp;&amp; modifiers.contains(Modifier.ABSTRACT)</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">                    &amp;&amp; !modifiers.contains(Modifier.PRIVATE)</span>
+<span class="pc bpc" id="L50" title="2 of 4 branches missed.">                    &amp;&amp; !modifiers.contains(Modifier.STATIC)</span>
+<span class="fc" id="L51">                    &amp;&amp; child instanceof ExecutableElement method) {</span>
+<span class="fc" id="L52">                resolveMethod(method);</span>
             }
-<span class="fc" id="L52">        }</span>
-<span class="fc" id="L53">    }</span>
+<span class="fc" id="L54">        }</span>
+<span class="fc" id="L55">    }</span>
 
     private void resolveMethod(ExecutableElement method) {
-<span class="fc" id="L56">        var source = SourceMethod.of(this.ctx, method);</span>
-<span class="fc" id="L57">        var old = methods.put(method, source);</span>
-<span class="pc bpc" id="L58" title="1 of 2 branches missed.">        if (old != null) {</span>
-<span class="nc" id="L59">            throw new IllegalStateException(&quot;duplicate: &quot; + method);</span>
-        }
-<span class="fc" id="L61">    }</span>
+        try {
+<span class="fc" id="L59">            var source = SourceMethod.of(this.ctx, method);</span>
+<span class="fc" id="L60">            var old = this.methods.put(method, source);</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">            if (old != null) {</span>
+<span class="nc" id="L62">                throw new IllegalStateException(&quot;duplicate: &quot; + method);</span>
+            }
+<span class="fc" id="L64">        } catch (RuntimeException e) {</span>
+<span class="fc" id="L65">            this.methods.remove(method);</span>
+<span class="fc" id="L66">            this.failures.put(method, e);</span>
+<span class="fc" id="L67">        }</span>
+<span class="fc" id="L68">    }</span>
 
     // ------------------------------------------------------------------------
 
-    public SourceMethod get(ExecutableElement method) {
-<span class="fc" id="L66">        return Objects.requireNonNull(methods.get(method));</span>
-    }
-
     public @Nullable SourceMethod getOpt(ExecutableElement method) {
-<span class="fc" id="L70">        return methods.get(method);</span>
+<span class="fc" id="L73">        var exp = this.failures.get(method);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        if (exp != null) {</span>
+<span class="fc" id="L75">            throw exp; // throw the exception saved in the init stage</span>
+        }
+<span class="fc" id="L77">        return this.methods.get(method);</span>
     }
 
     public Collection&lt;SourceMethod&gt; values() {
-<span class="fc" id="L74">        return methods.values();</span>
+<span class="fc" id="L81">        return this.methods.values();</span>
     }
+
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

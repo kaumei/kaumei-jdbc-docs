@@ -6,25 +6,35 @@ package io.kaumei.jdbc.anno.utils;
 
 import org.jspecify.annotations.Nullable;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
 public final class AnnoUtils {
 
-    private AnnoUtils() { // JaCoCo:no
+    private AnnoUtils() {
     }
 
     public static &lt;T&gt; T requireState(@Nullable T value, Supplier&lt;String&gt; messageSupplier) {
-<span class="fc bfc" id="L17" title="All 2 branches covered.">        if (value == null) {</span>
-<span class="fc" id="L18">            throw new IllegalStateException(messageSupplier.get());</span>
+<span class="fc bfc" id="L20" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L21">            throw new IllegalStateException(messageSupplier.get());</span>
         }
-<span class="fc" id="L20">        return value;</span>
+<span class="fc" id="L23">        return value;</span>
     }
 
     public static &lt;T&gt; T requireState(@Nullable T value, String message) {
-<span class="fc bfc" id="L24" title="All 2 branches covered.">        if (value == null) {</span>
-<span class="fc" id="L25">            throw new IllegalStateException(message);</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L28">            throw new IllegalStateException(message);</span>
         }
-<span class="fc" id="L27">        return value;</span>
+<span class="fc" id="L30">        return value;</span>
     }
+
+    public static &lt;T&gt; Set&lt;T&gt; immutableSet(T[] elements) {
+<span class="fc" id="L34">        var set = new LinkedHashSet&lt;T&gt;(elements.length);</span>
+<span class="fc" id="L35">        Collections.addAll(set, elements);</span>
+<span class="fc" id="L36">        return Collections.unmodifiableSet(set);</span>
+    }
+
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -10,7 +10,7 @@ import io.kaumei.jdbc.anno.msg.Msg;
 
 import javax.lang.model.element.ExecutableElement;
 
-public class GenerateJdbcThrowCodeGeneration implements GenerateJdbc {
+final class GenerateJdbcThrowCodeGeneration implements GenerateJdbc {
     // ----- state
     private final TargetMethod targetMethod;
 
@@ -18,12 +18,8 @@ public class GenerateJdbcThrowCodeGeneration implements GenerateJdbc {
 <span class="fc" id="L18">        this.targetMethod = new TargetMethod(ctx, method);</span>
 <span class="fc" id="L19">    }</span>
 
-    public MethodSpec generateMethod(Msg.Messages messages) {
-<span class="nc" id="L22">        return this.targetMethod.build(messages, &quot;JDBC method invalid&quot;);</span>
-    }
-
     public MethodSpec generateMethod(Msg.Messages messages, String header) {
-<span class="fc" id="L26">        return this.targetMethod.build(messages, header);</span>
+<span class="fc" id="L22">        return this.targetMethod.build(messages, header);</span>
     }
 
 }

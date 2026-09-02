@@ -33,7 +33,7 @@ public interface Msg {
     }
 
     static &lt;T&gt; Msg.NullableResult&lt;T&gt; nullableResult(@Nullable T value) {
-<span class="fc" id="L36">        return new MessageResultNullableImpl&lt;T&gt;(value);</span>
+<span class="fc" id="L36">        return new MessageResultNullableImpl&lt;&gt;(value);</span>
     }
 
     static &lt;T&gt; Msg.NullableResult&lt;T&gt; nullableResult(Messages messages) {
@@ -95,7 +95,7 @@ public interface Msg {
         /**
          * Will fail if the value is null, regardless of whether messages are
          * present or not.
-         * For a lazy null check, use build(Supplier&lt;T&gt; func).
+         * For a lazy null check, use {@code build(Supplier&lt;T&gt; func)}.
          */
         &lt;T&gt; Result&lt;T&gt; build(T value);
 
@@ -131,7 +131,7 @@ public interface Msg {
         /**
          * Will fail if the value is null, regardless of whether messages are
          * present or not.
-         * For a lazy null check, use build(Supplier&lt;T&gt; func).
+         * For a lazy null check, use {@code build(Supplier&lt;T&gt; func)}.
          */
         &lt;T&gt; Result&lt;T&gt; build(T value);
 

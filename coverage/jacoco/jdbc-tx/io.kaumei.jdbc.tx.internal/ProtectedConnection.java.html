@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ProtectedConnection.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-tx</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.tx.internal</a> &gt; <span class="el_source">ProtectedConnection.java</span></div><h1>ProtectedConnection.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2026 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.tx.internal;
+
+import java.sql.*;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.Executor;
+
+final class ProtectedConnection implements Connection {
+
+    private final Connection con;
+
+<span class="fc" id="L16">    ProtectedConnection(Connection con) {</span>
+<span class="fc" id="L17">        this.con = con;</span>
+<span class="fc" id="L18">    }</span>
+
+    @Override
+    public void setAutoCommit(boolean autoCommit) {
+<span class="fc" id="L22">        throw new IllegalStateException(&quot;Transaction connection does not allow setAutoCommit().&quot;);</span>
+    }
+
+    @Override
+    public void commit() {
+<span class="fc" id="L27">        throw new IllegalStateException(&quot;Transaction connection does not allow commit().&quot;);</span>
+    }
+
+    @Override
+    public void rollback() {
+<span class="fc" id="L32">        throw new IllegalStateException(&quot;Transaction connection does not allow rollback().&quot;);</span>
+    }
+
+    @Override
+    public void close() {
+<span class="fc" id="L37">        throw new IllegalStateException(&quot;Transaction connection does not allow close().&quot;);</span>
+    }
+
+    @Override
+    public void setReadOnly(boolean readOnly) {
+<span class="fc" id="L42">        throw new IllegalStateException(&quot;Transaction connection does not allow setReadOnly().&quot;);</span>
+    }
+
+    @Override
+    public void setTransactionIsolation(int level) {
+<span class="fc" id="L47">        throw new IllegalStateException(&quot;Transaction connection does not allow setTransactionIsolation().&quot;);</span>
+    }
+
+    @Override
+    public Savepoint setSavepoint() {
+<span class="fc" id="L52">        throw new IllegalStateException(&quot;Transaction connection does not allow setSavepoint().&quot;);</span>
+    }
+
+    @Override
+    public Savepoint setSavepoint(String name) {
+<span class="fc" id="L57">        throw new IllegalStateException(&quot;Transaction connection does not allow setSavepoint().&quot;);</span>
+    }
+
+    @Override
+    public void rollback(Savepoint savepoint) {
+<span class="fc" id="L62">        throw new IllegalStateException(&quot;Transaction connection does not allow rollback().&quot;);</span>
+    }
+
+    @Override
+    public void releaseSavepoint(Savepoint savepoint) {
+<span class="fc" id="L67">        throw new IllegalStateException(&quot;Transaction connection does not allow releaseSavepoint().&quot;);</span>
+    }
+
+    @Override
+    public void abort(Executor executor) {
+<span class="fc" id="L72">        throw new IllegalStateException(&quot;Transaction connection does not allow abort().&quot;);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    @Override
+    public Statement createStatement() throws SQLException {
+<span class="nc" id="L79">        return con.createStatement();</span>
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(String sql) throws SQLException {
+<span class="fc" id="L84">        return con.prepareStatement(sql);</span>
+    }
+
+    @Override
+    public CallableStatement prepareCall(String sql) throws SQLException {
+<span class="nc" id="L89">        return con.prepareCall(sql);</span>
+    }
+
+    @Override
+    public String nativeSQL(String sql) throws SQLException {
+<span class="nc" id="L94">        return con.nativeSQL(sql);</span>
+    }
+
+    @Override
+    public boolean getAutoCommit() throws SQLException {
+<span class="nc" id="L99">        return con.getAutoCommit();</span>
+    }
+
+    @Override
+    public boolean isClosed() throws SQLException {
+<span class="nc" id="L104">        return con.isClosed();</span>
+    }
+
+    @Override
+    public DatabaseMetaData getMetaData() throws SQLException {
+<span class="nc" id="L109">        return con.getMetaData();</span>
+    }
+
+    @Override
+    public boolean isReadOnly() throws SQLException {
+<span class="nc" id="L114">        return con.isReadOnly();</span>
+    }
+
+    @Override
+    public void setCatalog(String catalog) throws SQLException {
+<span class="nc" id="L119">        con.setCatalog(catalog);</span>
+<span class="nc" id="L120">    }</span>
+
+    @Override
+    public String getCatalog() throws SQLException {
+<span class="nc" id="L124">        return con.getCatalog();</span>
+    }
+
+    @Override
+    public int getTransactionIsolation() throws SQLException {
+<span class="nc" id="L129">        return con.getTransactionIsolation();</span>
+    }
+
+    @Override
+    public SQLWarning getWarnings() throws SQLException {
+<span class="nc" id="L134">        return con.getWarnings();</span>
+    }
+
+    @Override
+    public void clearWarnings() throws SQLException {
+<span class="nc" id="L139">        con.clearWarnings();</span>
+<span class="nc" id="L140">    }</span>
+
+    @Override
+    public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
+<span class="nc" id="L144">        return con.createStatement(resultSetType, resultSetConcurrency);</span>
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(
+            String sql,
+            int resultSetType,
+            int resultSetConcurrency) throws SQLException {
+<span class="nc" id="L152">        return con.prepareStatement(sql, resultSetType, resultSetConcurrency);</span>
+    }
+
+    @Override
+    public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency)
+            throws SQLException {
+<span class="nc" id="L158">        return con.prepareCall(sql, resultSetType, resultSetConcurrency);</span>
+    }
+
+    @Override
+    public Map&lt;String, Class&lt;?&gt;&gt; getTypeMap() throws SQLException {
+<span class="nc" id="L163">        return con.getTypeMap();</span>
+    }
+
+    @Override
+    public void setTypeMap(Map&lt;String, Class&lt;?&gt;&gt; map) throws SQLException {
+<span class="nc" id="L168">        con.setTypeMap(map);</span>
+<span class="nc" id="L169">    }</span>
+
+    @Override
+    public void setHoldability(int holdability) throws SQLException {
+<span class="nc" id="L173">        con.setHoldability(holdability);</span>
+<span class="nc" id="L174">    }</span>
+
+    @Override
+    public int getHoldability() throws SQLException {
+<span class="nc" id="L178">        return con.getHoldability();</span>
+    }
+
+
+    @Override
+    public Statement createStatement(
+            int resultSetType,
+            int resultSetConcurrency,
+            int resultSetHoldability) throws SQLException {
+<span class="nc" id="L187">        return con.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);</span>
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(
+            String sql,
+            int resultSetType,
+            int resultSetConcurrency,
+            int resultSetHoldability) throws SQLException {
+<span class="nc" id="L196">        return con.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);</span>
+    }
+
+    @Override
+    public CallableStatement prepareCall(
+            String sql,
+            int resultSetType,
+            int resultSetConcurrency,
+            int resultSetHoldability) throws SQLException {
+<span class="nc" id="L205">        return con.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);</span>
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
+<span class="nc" id="L210">        return con.prepareStatement(sql, autoGeneratedKeys);</span>
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
+<span class="nc" id="L215">        return con.prepareStatement(sql, columnIndexes);</span>
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
+<span class="nc" id="L220">        return con.prepareStatement(sql, columnNames);</span>
+    }
+
+    @Override
+    public Clob createClob() throws SQLException {
+<span class="nc" id="L225">        return con.createClob();</span>
+    }
+
+    @Override
+    public Blob createBlob() throws SQLException {
+<span class="nc" id="L230">        return con.createBlob();</span>
+    }
+
+    @Override
+    public NClob createNClob() throws SQLException {
+<span class="nc" id="L235">        return con.createNClob();</span>
+    }
+
+    @Override
+    public SQLXML createSQLXML() throws SQLException {
+<span class="nc" id="L240">        return con.createSQLXML();</span>
+    }
+
+    @Override
+    public boolean isValid(int timeout) throws SQLException {
+<span class="nc" id="L245">        return con.isValid(timeout);</span>
+    }
+
+    @Override
+    public void setClientInfo(String name, String value) throws SQLClientInfoException {
+<span class="nc" id="L250">        con.setClientInfo(name, value);</span>
+<span class="nc" id="L251">    }</span>
+
+    @Override
+    public void setClientInfo(Properties properties) throws SQLClientInfoException {
+<span class="nc" id="L255">        con.setClientInfo(properties);</span>
+<span class="nc" id="L256">    }</span>
+
+    @Override
+    public String getClientInfo(String name) throws SQLException {
+<span class="nc" id="L260">        return con.getClientInfo(name);</span>
+    }
+
+    @Override
+    public Properties getClientInfo() throws SQLException {
+<span class="nc" id="L265">        return con.getClientInfo();</span>
+    }
+
+    @Override
+    public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
+<span class="nc" id="L270">        return con.createArrayOf(typeName, elements);</span>
+    }
+
+    @Override
+    public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
+<span class="nc" id="L275">        return con.createStruct(typeName, attributes);</span>
+    }
+
+    @Override
+    public void setSchema(String schema) throws SQLException {
+<span class="nc" id="L280">        con.setSchema(schema);</span>
+<span class="nc" id="L281">    }</span>
+
+    @Override
+    public String getSchema() throws SQLException {
+<span class="nc" id="L285">        return con.getSchema();</span>
+    }
+
+    @Override
+    public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
+<span class="nc" id="L290">        con.setNetworkTimeout(executor, milliseconds);</span>
+<span class="nc" id="L291">    }</span>
+
+    @Override
+    public int getNetworkTimeout() throws SQLException {
+<span class="nc" id="L295">        return con.getNetworkTimeout();</span>
+    }
+
+    @Override
+    public void beginRequest() throws SQLException {
+<span class="nc" id="L300">        con.beginRequest();</span>
+<span class="nc" id="L301">    }</span>
+
+    @Override
+    public void endRequest() throws SQLException {
+<span class="nc" id="L305">        con.endRequest();</span>
+<span class="nc" id="L306">    }</span>
+
+    @Override
+    public boolean setShardingKeyIfValid(
+            ShardingKey shardingKey,
+            ShardingKey superShardingKey,
+            int timeout) throws SQLException {
+<span class="nc" id="L313">        return con.setShardingKeyIfValid(shardingKey, superShardingKey, timeout);</span>
+    }
+
+    @Override
+    public boolean setShardingKeyIfValid(ShardingKey shardingKey, int timeout) throws SQLException {
+<span class="nc" id="L318">        return con.setShardingKeyIfValid(shardingKey, timeout);</span>
+    }
+
+    @Override
+    public void setShardingKey(ShardingKey shardingKey, ShardingKey superShardingKey) throws SQLException {
+<span class="nc" id="L323">        con.setShardingKey(shardingKey, superShardingKey);</span>
+<span class="nc" id="L324">    }</span>
+
+    @Override
+    public void setShardingKey(ShardingKey shardingKey) throws SQLException {
+<span class="nc" id="L328">        con.setShardingKey(shardingKey);</span>
+<span class="nc" id="L329">    }</span>
+
+    @Override
+    public &lt;T&gt; T unwrap(Class&lt;T&gt; iface) throws SQLException {
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">        if (iface.isInstance(con)) {</span>
+<span class="fc" id="L334">            return iface.cast(con);</span>
+        }
+<span class="nc" id="L336">        return con.unwrap(iface);</span>
+    }
+
+    @Override
+    public boolean isWrapperFor(Class&lt;?&gt; iface) throws SQLException {
+<span class="pc bpc" id="L341" title="3 of 4 branches missed.">        return iface.isInstance(con) || con.isWrapperFor(iface);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

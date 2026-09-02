@@ -8,6 +8,7 @@ import com.palantir.javapoet.CodeBlock;
 import io.kaumei.jdbc.anno.gen.KaumeiLib;
 import io.kaumei.jdbc.anno.gen.TargetMethod;
 import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.model.Visibility;
 import io.kaumei.jdbc.anno.store.SearchKey;
 import io.kaumei.jdbc.anno.store.SourceDV;
 
@@ -19,16 +20,17 @@ import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.getQualifiedClassName;
 
 final class ConverterStaticSimple extends Java2JdbcConverter {
 
-<span class="fc" id="L22">    record Placeholder(TypeMirror type, SourceDV source, ExecutableElement method,</span>
+<span class="fc" id="L23">    record Placeholder(TypeMirror type, SourceDV source, Visibility visibility,</span>
+                       ExecutableElement method,
                        SearchKey other) implements Java2JdbcConverter.Placeholder {
         @Override
         public SearchKey otherPlaceholder() {
-<span class="fc" id="L26">            return other;</span>
+<span class="fc" id="L28">            return other;</span>
         }
 
         @Override
         public Java2JdbcConverter resolve(Java2JdbcConverter converter) {
-<span class="fc" id="L31">            return new ConverterStaticSimple(this, converter);</span>
+<span class="fc" id="L33">            return new ConverterStaticSimple(this, converter);</span>
         }
     }
 
@@ -39,37 +41,37 @@ final class ConverterStaticSimple extends Java2JdbcConverter {
     private final Java2JdbcConverter converter;
 
     private ConverterStaticSimple(Placeholder placeholder, Java2JdbcConverter converter) {
-<span class="fc" id="L42">        super(placeholder.type, placeholder.source);</span>
-<span class="fc" id="L43">        this.qualifiedTypeName = getQualifiedClassName(placeholder.method);</span>
-<span class="fc" id="L44">        this.methodName = placeholder.method.getSimpleName();</span>
-<span class="fc" id="L45">        this.converter = converter;</span>
-<span class="fc" id="L46">    }</span>
+<span class="fc" id="L44">        super(placeholder.type, placeholder.source, placeholder.visibility.and(converter.visibility()));</span>
+<span class="fc" id="L45">        this.qualifiedTypeName = getQualifiedClassName(placeholder.method);</span>
+<span class="fc" id="L46">        this.methodName = placeholder.method.getSimpleName();</span>
+<span class="fc" id="L47">        this.converter = converter;</span>
+<span class="fc" id="L48">    }</span>
 
     @Override
     public void setParameter(TargetMethod builder, CodeBlock paramAccess, CodeBlock columnIndex, OptionalFlag optional) {
-<span class="fc" id="L50">        builder.addComment(&quot;ConverterStaticSimple&quot;, &quot;type&quot;, this.type(), &quot;optional&quot;, optional);</span>
-<span class="fc" id="L51">        var localName = builder.tempVarName(paramAccess);</span>
-<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (optional.isNonNull()) {</span>
-<span class="fc bfc" id="L53" title="All 2 branches covered.">            if (!this.type().getKind().isPrimitive()) {</span>
-<span class="fc" id="L54">                builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
-<span class="fc" id="L55">                builder.addStatement(KaumeiLib.throwNullPointerException(paramAccess));</span>
-<span class="fc" id="L56">                builder.endControlFlow();</span>
+<span class="fc" id="L52">        builder.addComment(&quot;ConverterStaticSimple&quot;, &quot;type&quot;, this.type(), &quot;optional&quot;, optional);</span>
+<span class="fc" id="L53">        var localName = builder.tempVarName(paramAccess);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        if (optional.isNonNull()) {</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">            if (!this.type().getKind().isPrimitive()) {</span>
+<span class="fc" id="L56">                builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
+<span class="fc" id="L57">                builder.addStatement(KaumeiLib.throwNullPointerException(paramAccess));</span>
+<span class="fc" id="L58">                builder.endControlFlow();</span>
             }
-<span class="fc" id="L58">            builder.addStatement(&quot;var $L = $L.$N($L)&quot;, localName, this.qualifiedTypeName, this.methodName, paramAccess);</span>
-<span class="fc" id="L59">            converter.setParameter(builder, localName, columnIndex, optional);</span>
-<span class="pc bpc" id="L60" title="1 of 2 branches missed.">        } else if (this.type().getKind().isPrimitive()) { // sanity-check</span>
-<span class="nc" id="L61">            throw new IllegalStateException(&quot;Primitive type must be non-null:&quot; + this); // sanity-check</span>
-<span class="fc bfc" id="L62" title="All 2 branches covered.">        } else if (this.converter.type().getKind().isPrimitive()) {</span>
-<span class="fc" id="L63">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
-<span class="fc" id="L64">            builder.addStatement(builder.setNull(this.converter.type(), columnIndex));</span>
-<span class="fc" id="L65">            builder.nextControlFlow(&quot;else&quot;);</span>
-<span class="fc" id="L66">            builder.addStatement(&quot;var $L = $L.$N($L)&quot;, localName, this.qualifiedTypeName, this.methodName, paramAccess);</span>
-<span class="fc" id="L67">            converter.setParameter(builder, localName, columnIndex, OptionalFlag.NON_NULL);</span>
-<span class="fc" id="L68">            builder.endControlFlow();</span>
+<span class="fc" id="L60">            builder.addStatement(&quot;var $L = $L.$N($L)&quot;, localName, this.qualifiedTypeName, this.methodName, paramAccess);</span>
+<span class="fc" id="L61">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        } else if (this.type().getKind().isPrimitive()) { // sanity-check</span>
+<span class="nc" id="L63">            throw new IllegalStateException(&quot;Primitive type must be non-null:&quot; + this); // sanity-check</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        } else if (this.converter.type().getKind().isPrimitive()) {</span>
+<span class="fc" id="L65">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
+<span class="fc" id="L66">            builder.addStatement(builder.setNull(this.converter.type(), columnIndex));</span>
+<span class="fc" id="L67">            builder.nextControlFlow(&quot;else&quot;);</span>
+<span class="fc" id="L68">            builder.addStatement(&quot;var $L = $L.$N($L)&quot;, localName, this.qualifiedTypeName, this.methodName, paramAccess);</span>
+<span class="fc" id="L69">            converter.setParameter(builder, localName, columnIndex, OptionalFlag.NON_NULL);</span>
+<span class="fc" id="L70">            builder.endControlFlow();</span>
         } else {
-<span class="fc" id="L70">            builder.addStatement(&quot;var $L = $L == null ? null : $L.$N($L)&quot;, localName, paramAccess, qualifiedTypeName, methodName, paramAccess);</span>
-<span class="fc" id="L71">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+<span class="fc" id="L72">            builder.addStatement(&quot;var $L = $L == null ? null : $L.$N($L)&quot;, localName, paramAccess, qualifiedTypeName, methodName, paramAccess);</span>
+<span class="fc" id="L73">            converter.setParameter(builder, localName, columnIndex, optional);</span>
         }
-<span class="fc" id="L73">    }</span>
+<span class="fc" id="L75">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

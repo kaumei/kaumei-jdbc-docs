@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>VisibilityService.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-processor</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.anno.model</a> &gt; <span class="el_source">VisibilityService.java</span></div><h1>VisibilityService.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.anno.model;
+
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+import javax.lang.model.util.Elements;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
+
+public final class VisibilityService {
+
+<span class="fc" id="L16">    enum VisibilityKind {</span>
+<span class="fc" id="L17">        PUBLIC,</span>
+<span class="fc" id="L18">        PACKAGE,</span>
+<span class="fc" id="L19">        NOT_VISIBLE;</span>
+
+        static VisibilityKind of(Element element) {
+<span class="fc" id="L22">            var modifiers = element.getModifiers();</span>
+<span class="fc bfc" id="L23" title="All 4 branches covered.">            if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {</span>
+<span class="fc" id="L24">                return VisibilityKind.NOT_VISIBLE;</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">            } else if (modifiers.contains(Modifier.PUBLIC)) {</span>
+<span class="fc" id="L26">                return VisibilityKind.PUBLIC;</span>
+            }
+<span class="fc" id="L28">            return VisibilityKind.PACKAGE;</span>
+        }
+
+        VisibilityKind and(Element elem) {
+<span class="fc" id="L32">            var other = VisibilityKind.of(elem);</span>
+<span class="pc bpc" id="L33" title="1 of 4 branches missed.">            if (this == NOT_VISIBLE || other == NOT_VISIBLE) {</span>
+<span class="fc" id="L34">                return NOT_VISIBLE;</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">            } else if (this == PUBLIC) {</span>
+<span class="fc" id="L36">                return other;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">            } else if (other == PUBLIC) {</span>
+<span class="fc" id="L38">                return this;</span>
+            }
+<span class="fc" id="L40">            return PACKAGE;</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    private final Elements elements;
+
+<span class="fc" id="L48">    public VisibilityService(Elements elements) {</span>
+<span class="fc" id="L49">        this.elements = elements;</span>
+<span class="fc" id="L50">    }</span>
+
+    public boolean isVisible(Element from, Visibility v) {
+<span class="fc bfc" id="L53" title="All 4 branches covered.">        return v.isPublic() || v.isVisible(this.elements.getPackageOf(from));</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public Visibility ofElement(Element elem) {
+
+<span class="fc" id="L60">        var visibility = VisibilityKind.of(elem);</span>
+
+<span class="fc" id="L62">        var current = elem.getEnclosingElement();</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        while (current instanceof TypeElement type) {</span>
+<span class="fc" id="L64">            visibility = visibility.and(type);</span>
+<span class="fc" id="L65">            current = current.getEnclosingElement();</span>
+        }
+
+<span class="pc bpc" id="L68" title="1 of 4 branches missed.">        if (visibility != VisibilityKind.NOT_VISIBLE &amp;&amp; current instanceof PackageElement pkg) {</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">            if (visibility == VisibilityKind.PUBLIC) {</span>
+<span class="fc" id="L70">                return Visibility.PUBLIC_VISIBILITY;</span>
+            }
+<span class="fc" id="L72">            return Visibility.packageAccess(pkg);</span>
+        }
+<span class="fc" id="L74">        return Visibility.NO_VISIBLE;</span>
+    }
+
+    public Visibility ofMethod(ExecutableElement executable) {
+<span class="fc" id="L78">        var result = ofElement(executable);</span>
+<span class="fc" id="L79">        result = result.and(ofTypeMirror(executable.getReturnType()));</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        for (VariableElement parameter : executable.getParameters()) {</span>
+<span class="fc" id="L81">            result = result.and(ofTypeMirror(parameter.asType()));</span>
+<span class="fc" id="L82">        }</span>
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        for (TypeParameterElement parameter : executable.getTypeParameters()) {</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">            for (TypeMirror bound : parameter.getBounds()) {</span>
+<span class="nc" id="L85">                result = result.and(ofTypeMirror(bound));</span>
+<span class="nc" id="L86">            }</span>
+<span class="nc" id="L87">        }</span>
+<span class="fc" id="L88">        return result;</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    private Visibility ofTypeMirror(TypeMirror type) {
+<span class="fc" id="L94">        Set&lt;TypeMirror&gt; visited = Collections.newSetFromMap(new IdentityHashMap&lt;&gt;());</span>
+<span class="fc" id="L95">        return of(type, visited);</span>
+    }
+
+    private Visibility of(TypeMirror type, Set&lt;TypeMirror&gt; visited) {
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">        if (!visited.add(type)) {</span>
+<span class="nc" id="L100">            return Visibility.PUBLIC_VISIBILITY;</span>
+        }
+
+<span class="pc bpc" id="L103" title="2 of 6 branches missed.">        return switch (type.getKind()) {</span>
+<span class="fc" id="L104">            case ARRAY -&gt; of(((ArrayType) type).getComponentType(), visited);</span>
+            case DECLARED, ERROR -&gt; {
+<span class="fc" id="L106">                DeclaredType declared = (DeclaredType) type;</span>
+<span class="fc" id="L107">                Visibility result = ofElement(declared.asElement());</span>
+<span class="fc" id="L108">                TypeMirror enclosingType = declared.getEnclosingType();</span>
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">                if (enclosingType.getKind() != TypeKind.NONE) {</span>
+<span class="nc" id="L110">                    result = result.and(of(enclosingType, visited));</span>
+                }
+<span class="fc bfc" id="L112" title="All 2 branches covered.">                for (TypeMirror argument : declared.getTypeArguments()) {</span>
+<span class="fc" id="L113">                    result = result.and(of(argument, visited));</span>
+<span class="fc" id="L114">                }</span>
+<span class="fc" id="L115">                yield result;</span>
+            }
+            case TYPEVAR -&gt; {
+<span class="fc" id="L118">                TypeVariable variable = (TypeVariable) type;</span>
+<span class="fc" id="L119">                yield of(variable.getUpperBound(), visited)</span>
+<span class="fc" id="L120">                        .and(of(variable.getLowerBound(), visited));</span>
+            }
+            case WILDCARD -&gt; {
+<span class="nc" id="L123">                WildcardType wildcard = (WildcardType) type;</span>
+<span class="nc" id="L124">                Visibility result = Visibility.PUBLIC_VISIBILITY;</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">                if (wildcard.getExtendsBound() != null) {</span>
+<span class="nc" id="L126">                    result = result.and(of(wildcard.getExtendsBound(), visited));</span>
+                }
+<span class="nc bnc" id="L128" title="All 2 branches missed.">                if (wildcard.getSuperBound() != null) {</span>
+<span class="nc" id="L129">                    result = result.and(of(wildcard.getSuperBound(), visited));</span>
+                }
+<span class="nc" id="L131">                yield result;</span>
+            }
+            case INTERSECTION -&gt; {
+<span class="nc" id="L134">                Visibility result = Visibility.PUBLIC_VISIBILITY;</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">                for (TypeMirror bound : ((IntersectionType) type).getBounds()) {</span>
+<span class="nc" id="L136">                    result = result.and(of(bound, visited));</span>
+<span class="nc" id="L137">                }</span>
+<span class="nc" id="L138">                yield result;</span>
+            }
+<span class="fc" id="L140">            default -&gt; Visibility.PUBLIC_VISIBILITY;</span>
+        };
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

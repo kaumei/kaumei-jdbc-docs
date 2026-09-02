@@ -5,10 +5,11 @@
 package io.kaumei.jdbc.anno.gen;
 
 import com.palantir.javapoet.MethodSpec;
-import io.kaumei.jdbc.JdbcException;
 import io.kaumei.jdbc.anno.ProcessorException;
 import io.kaumei.jdbc.anno.ctx.Context;
 import io.kaumei.jdbc.anno.jdbc2java.ColumnIndex;
+import io.kaumei.jdbc.anno.jdbc2java.ConverterRowObjects;
+import io.kaumei.jdbc.anno.jdbc2java.Jdbc2JavaConverter;
 import io.kaumei.jdbc.anno.model.JdbcTypeKind;
 import io.kaumei.jdbc.anno.model.JdbcTypeMirror;
 import io.kaumei.jdbc.anno.model.SourceMethod;
@@ -19,137 +20,248 @@ import io.kaumei.jdbc.anno.store.SourceDV;
 import io.kaumei.jdbc.annotation.JdbcUpdate;
 import io.kaumei.jdbc.annotation.config.JdbcNoMoreRows;
 import io.kaumei.jdbc.annotation.config.JdbcNoRows;
+import io.kaumei.jdbc.core.JdbcException;
 
 import javax.lang.model.element.ExecutableElement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.HashSet;
 
-public class GenerateJdbcUpdate implements GenerateJdbc {
+import static io.kaumei.jdbc.anno.gen.KaumeiLib.stringArray;
+
+final class GenerateJdbcUpdate implements GenerateJdbc {
     // ----- services
     private final Context ctx;
     // ----- state
-    private final SourceMethod sourceMethod;
+    private final SourceMethod.Update sourceMethod;
     private final TargetMethod targetMethod;
     private final Msg.Builder messages;
 
-<span class="fc" id="L35">    GenerateJdbcUpdate(Context ctx, SourceMethod sourceMethod) {</span>
-<span class="fc" id="L36">        this.ctx = ctx;</span>
-<span class="fc" id="L37">        this.sourceMethod = sourceMethod;</span>
-<span class="fc" id="L38">        this.targetMethod = new TargetMethod(this.ctx, sourceMethod.method());</span>
-<span class="fc" id="L39">        this.messages = Msg.builder();</span>
-<span class="fc" id="L40">    }</span>
+<span class="fc" id="L41">    GenerateJdbcUpdate(Context ctx, SourceMethod.Update sourceMethod) {</span>
+<span class="fc" id="L42">        this.ctx = ctx;</span>
+<span class="fc" id="L43">        this.sourceMethod = sourceMethod;</span>
+<span class="fc" id="L44">        this.targetMethod = new TargetMethod(this.ctx, sourceMethod.method());</span>
+<span class="fc" id="L45">        this.messages = Msg.builder();</span>
+<span class="fc" id="L46">    }</span>
 
     // ------------------------------------------------------------------------
 
     public MethodSpec generateMethod() {
-<span class="fc" id="L45">        this.ctx.logger.debug(&quot;---- @JdbcUpdate ----&quot;,</span>
+<span class="fc" id="L51">        this.ctx.logger.debug(&quot;---- @JdbcUpdate ----&quot;,</span>
                 &quot;method&quot;, sourceMethod,
-<span class="fc" id="L47">                &quot;returnType&quot;, sourceMethod.method().getReturnType());</span>
+<span class="fc" id="L53">                &quot;returnType&quot;, sourceMethod.method().getReturnType());</span>
 
-<span class="fc" id="L49">        var returnType = sourceMethod.returnType();</span>
+<span class="fc" id="L55">        var returnType = sourceMethod.returnType();</span>
 
-<span class="fc" id="L51">        var gen = sourceMethod.jdbcReturnGeneratedValues();</span>
-<span class="fc bfc" id="L52" title="All 4 branches covered.">        if (gen == JdbcUpdate.GeneratedValues.GENERATED_KEYS || gen == JdbcUpdate.GeneratedValues.EXECUTE_QUERY) {</span>
-<span class="fc" id="L53">            updateReturning(returnType, gen);</span>
-<span class="fc bfc" id="L54" title="All 2 branches covered.">        } else if (returnType.kind() == JdbcTypeKind.VOID</span>
-<span class="fc bfc" id="L55" title="All 2 branches covered.">                || returnType.kind() == JdbcTypeKind.INT</span>
-<span class="fc bfc" id="L56" title="All 2 branches covered.">                || returnType.kind() == JdbcTypeKind.BOOLEAN) {</span>
-<span class="fc" id="L57">            updateSimple();</span>
+<span class="fc" id="L57">        var gen = sourceMethod.jdbcReturnGeneratedValues();</span>
+<span class="fc" id="L58">        var returnGeneratedColumns = sourceMethod.returnGeneratedColumns();</span>
+<span class="fc bfc" id="L59" title="All 4 branches covered.">        if (returnGeneratedColumns.length &gt; 0</span>
+                &amp;&amp; gen != JdbcUpdate.GeneratedValues.NONE) {
+<span class="fc" id="L61">            this.messages.add(JdbcMsg.JDBC_UPDATE_RETURN_GENERATED_COLUMNS_REQUIRES_NONE);</span>
+<span class="fc bfc" id="L62" title="All 4 branches covered.">        } else if (gen == JdbcUpdate.GeneratedValues.GENERATED_KEYS</span>
+                || gen == JdbcUpdate.GeneratedValues.EXECUTE_QUERY) {
+<span class="fc" id="L64">            updateReturning(returnType, gen);</span>
+
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        } else if (returnGeneratedColumns.length &gt; 0) {</span>
+<span class="fc" id="L67">            updateReturning(returnType, returnGeneratedColumns);</span>
+
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        } else if (returnType.kind() == JdbcTypeKind.VOID</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">                || returnType.kind() == JdbcTypeKind.INT</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">                || returnType.kind() == JdbcTypeKind.BOOLEAN) {</span>
+<span class="fc" id="L72">            updateSimple();</span>
         } else {
-<span class="fc" id="L59">            this.messages.add(JdbcMsg.jdbcUpdateRequiresSupportedReturnType(returnType));</span>
+<span class="fc" id="L74">            this.messages.add(JdbcMsg.jdbcUpdateRequiresSupportedReturnType(returnType));</span>
         }
 
-<span class="fc" id="L62">        this.messages.add(sourceMethod.unusedAnno());</span>
-<span class="fc" id="L63">        return this.targetMethod.build(this.messages.build(), &quot;@JdbcUpdate method invalid&quot;);</span>
+<span class="fc" id="L77">        this.messages.add(sourceMethod.unusedAnno());</span>
+<span class="fc" id="L78">        return this.targetMethod.build(this.messages.build(), &quot;@JdbcUpdate method invalid&quot;);</span>
     }
 
     private void updateSimple() {
-<span class="fc" id="L67">        this.ctx.logger.debug(&quot;updateSimple&quot;);</span>
+<span class="fc" id="L82">        this.ctx.logger.debug(&quot;updateSimple&quot;);</span>
 
-<span class="fc" id="L69">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
-<span class="fc" id="L70">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
-<span class="fc" id="L71">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
-<span class="fc" id="L72">        targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
-<span class="fc" id="L73">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
-<span class="fc" id="L74">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L84">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L85">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L86">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="fc" id="L87">        targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
+<span class="fc" id="L88">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L89">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
         // ----
-<span class="pc bpc" id="L76" title="1 of 4 branches missed.">        switch (sourceMethod.method().getReturnType().getKind()) { // JaCoCo:ignore</span>
-<span class="fc" id="L77">            case VOID -&gt; targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
-<span class="fc" id="L78">            case INT -&gt; targetMethod.addStatement(&quot;return stmt.executeUpdate()&quot;);</span>
-<span class="fc" id="L79">            case BOOLEAN -&gt; targetMethod.addStatement(&quot;return stmt.executeUpdate() != 0&quot;);</span>
+<span class="pc bpc" id="L91" title="1 of 4 branches missed.">        switch (sourceMethod.method().getReturnType().getKind()) {</span>
+<span class="fc" id="L92">            case VOID -&gt; targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L93">            case INT -&gt; targetMethod.addStatement(&quot;return stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L94">            case BOOLEAN -&gt; targetMethod.addStatement(&quot;return stmt.executeUpdate() != 0&quot;);</span>
             default -&gt;
-<span class="nc" id="L81">                    throw new IllegalStateException(&quot;Unexpected return type: &quot; + sourceMethod.method().getReturnType().getKind()); // sanity-check</span>
+<span class="nc" id="L96">                    throw new IllegalStateException(&quot;Unexpected return type: &quot; + sourceMethod.method().getReturnType().getKind()); // sanity-check</span>
         }
         // ----
-<span class="fc" id="L84">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L85">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
-<span class="fc" id="L86">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
-<span class="fc" id="L87">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L88">    }</span>
+<span class="fc" id="L99">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L100">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L101">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L102">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L103">    }</span>
 
     private void updateReturning(JdbcTypeMirror&lt;ExecutableElement&gt; resultType,
                                  JdbcUpdate.GeneratedValues jdbcReturnGeneratedValues) {
-<span class="fc" id="L92">        this.ctx.logger.debug(&quot;updateReturning&quot;, &quot;resultType&quot;, resultType, &quot;jdbcReturnGeneratedValues&quot;, jdbcReturnGeneratedValues);</span>
+<span class="fc" id="L107">        this.ctx.logger.debug(&quot;updateReturning&quot;, &quot;resultType&quot;, resultType, &quot;jdbcReturnGeneratedValues&quot;, jdbcReturnGeneratedValues);</span>
 
-<span class="fc bfc" id="L94" title="All 2 branches covered.">        switch (resultType.kind()) {</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        switch (resultType.kind()) {</span>
             case VOID,
                  KAUMEI_JDBC_ITERABLE, KAUMEI_JDBC_RESULT_SET, KAUMEI_JDBC_BATCH,
                  ARRAY, LIST, STREAM:
-<span class="fc" id="L98">                this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresSupportedReturnType(resultType));</span>
-<span class="fc" id="L99">                return;</span>
+<span class="fc" id="L113">                this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresSupportedReturnType(resultType));</span>
+<span class="fc" id="L114">                return;</span>
         }
 
-<span class="fc" id="L102">        var request = SearchKey.of(resultType.type(), sourceMethod.jdbcConverterName());</span>
-<span class="fc" id="L103">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
-<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
-<span class="fc" id="L105">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
-<span class="fc" id="L106">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
-<span class="fc" id="L107">            return;</span>
+<span class="fc" id="L117">        var request = SearchKey.of(resultType.type(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L118">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
+<span class="fc" id="L120">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
+<span class="fc" id="L121">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
+<span class="fc" id="L122">            return;</span>
         }
 
-<span class="fc" id="L110">        var optReason = resultType.optional().checkNonNullOrUnspecified();</span>
-<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (optReason != null) {</span>
-<span class="fc" id="L112">            this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresNonNullOrUnspecifiedReturnType(resultType.optional()));</span>
-<span class="fc" id="L113">            return;</span>
+<span class="fc" id="L125">        var optReason = resultType.optional().checkNonNullOrUnspecified();</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (optReason != null) {</span>
+<span class="fc" id="L127">            this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresNonNullOrUnspecifiedReturnType(resultType.optional()));</span>
+<span class="fc" id="L128">            return;</span>
         }
 
-<span class="fc" id="L116">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
-<span class="fc" id="L117">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
-<span class="fc" id="L118">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
-<span class="pc bpc" id="L119" title="1 of 3 branches missed.">        switch (jdbcReturnGeneratedValues) { // JaCoCo:ignore</span>
+<span class="fc" id="L131">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L132">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L133">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="pc bpc" id="L134" title="1 of 3 branches missed.">        switch (jdbcReturnGeneratedValues) {</span>
             case GENERATED_KEYS -&gt; {
-<span class="fc" id="L121">                targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql, $T.RETURN_GENERATED_KEYS))&quot;, Statement.class);</span>
-<span class="fc" id="L122">                this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
-<span class="fc" id="L123">                targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
-<span class="fc" id="L124">                targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
-<span class="fc" id="L125">                targetMethod.beginControlFlow(&quot;try(var rs = stmt.getGeneratedKeys())&quot;);</span>
-<span class="fc" id="L126">            }</span>
+<span class="fc" id="L136">                targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql, $T.RETURN_GENERATED_KEYS))&quot;, Statement.class);</span>
+<span class="fc" id="L137">                this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L138">                targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L139">                targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L140">                targetMethod.beginControlFlow(&quot;try(var rs = stmt.getGeneratedKeys())&quot;);</span>
+<span class="fc" id="L141">            }</span>
             case EXECUTE_QUERY -&gt; {
-<span class="fc" id="L128">                targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
-<span class="fc" id="L129">                this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
-<span class="fc" id="L130">                targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
-<span class="fc" id="L131">                targetMethod.beginControlFlow(&quot;try(var rs = stmt.executeQuery())&quot;);</span>
-<span class="fc" id="L132">            }</span>
+<span class="fc" id="L143">                targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
+<span class="fc" id="L144">                this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L145">                targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L146">                targetMethod.beginControlFlow(&quot;try(var rs = stmt.executeQuery())&quot;);</span>
+<span class="fc" id="L147">            }</span>
             default -&gt;
-<span class="nc" id="L134">                    throw new ProcessorException(&quot;Unexpected return type: &quot; + jdbcReturnGeneratedValues); // sanity-check</span>
+<span class="nc" id="L149">                    throw new ProcessorException(&quot;Unexpected return type: &quot; + jdbcReturnGeneratedValues); // sanity-check</span>
         }
 
-<span class="fc" id="L137">        var converter = searchResult.value();</span>
-<span class="fc" id="L138">        this.targetMethod.addCheckNoRows(JdbcNoRows.Kind.THROW_EXCEPTION, resultType.optional());</span>
-<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (converter.isColumn()) {</span>
-<span class="fc" id="L140">            converter.addColumnByIndex(this.targetMethod, &quot;result&quot;, ColumnIndex.ofValue(1), resultType.optional());</span>
+<span class="fc" id="L152">        var converter = searchResult.value();</span>
+<span class="fc" id="L153">        this.targetMethod.addCheckNoRows(JdbcNoRows.Kind.THROW_EXCEPTION, resultType.optional());</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">        if (converter instanceof Jdbc2JavaConverter.ColumnConverter column) {</span>
+<span class="fc" id="L155">            column.addColumnByIndex(this.targetMethod, &quot;result&quot;, ColumnIndex.ofValue(1), resultType.optional());</span>
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        } else if (converter instanceof Jdbc2JavaConverter.RowConverter row) {</span>
+<span class="fc" id="L157">            row.addResultSetToRow(this.targetMethod, &quot;result&quot;, resultType.optional());</span>
         } else {
-<span class="fc" id="L142">            converter.addResultSetToRow(this.targetMethod, &quot;result&quot;, resultType.optional());</span>
+<span class="nc" id="L159">            throw new IllegalArgumentException(&quot;Unsupported JDBC-to-Java converter type: &quot; + converter.getClass().getName());</span>
         }
-<span class="fc" id="L144">        this.targetMethod.addCheckNoMoreRows(JdbcNoMoreRows.Kind.THROW_EXCEPTION);</span>
-<span class="fc" id="L145">        this.targetMethod.addStatement(&quot;return result&quot;);</span>
+<span class="fc" id="L161">        this.targetMethod.addCheckNoMoreRows(JdbcNoMoreRows.Kind.THROW_EXCEPTION);</span>
+<span class="fc" id="L162">        this.targetMethod.addStatement(&quot;return result&quot;);</span>
 
-<span class="fc" id="L147">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L148">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L149">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
-<span class="fc" id="L150">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
-<span class="fc" id="L151">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L152">    }</span>
+<span class="fc" id="L164">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L165">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L166">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L167">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L168">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L169">    }</span>
+
+
+    private void updateReturning(JdbcTypeMirror&lt;ExecutableElement&gt; resultType,
+                                 String[] returnGeneratedColumns) {
+<span class="fc" id="L174">        this.ctx.logger.debug(&quot;updateReturning&quot;, &quot;resultType&quot;, resultType, &quot;returnGeneratedColumns&quot;, returnGeneratedColumns);</span>
+
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">        switch (resultType.kind()) {</span>
+            case VOID,
+                 KAUMEI_JDBC_ITERABLE, KAUMEI_JDBC_RESULT_SET, KAUMEI_JDBC_BATCH,
+                 ARRAY, LIST, STREAM:
+<span class="nc" id="L180">                this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresSupportedReturnType(resultType));</span>
+<span class="nc" id="L181">                return;</span>
+        }
+
+<span class="fc" id="L184">        var request = SearchKey.of(resultType.type(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L185">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">        if (searchResult.hasMessages()) {</span>
+<span class="nc" id="L187">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
+<span class="nc" id="L188">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
+<span class="nc" id="L189">            return;</span>
+        }
+
+<span class="fc" id="L192">        var optReason = resultType.optional().checkNonNullOrUnspecified();</span>
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">        if (optReason != null) {</span>
+<span class="nc" id="L194">            this.messages.add(JdbcMsg.jdbcUpdateGeneratedValuesRequiresNonNullOrUnspecifiedReturnType(resultType.optional()));</span>
+<span class="nc" id="L195">            return;</span>
+        }
+
+<span class="fc" id="L198">        var converter = searchResult.value();</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">        if (!validateReturnGeneratedColumns(returnGeneratedColumns, converter)) {</span>
+<span class="fc" id="L200">            return;</span>
+        }
+
+<span class="fc" id="L203">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L204">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L205">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+
+<span class="fc" id="L207">        targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql, $L))&quot;, stringArray(returnGeneratedColumns));</span>
+<span class="fc" id="L208">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L209">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L210">        targetMethod.addStatement(&quot;stmt.executeUpdate()&quot;);</span>
+<span class="fc" id="L211">        targetMethod.beginControlFlow(&quot;try(var rs = stmt.getGeneratedKeys())&quot;);</span>
+
+
+<span class="fc" id="L214">        this.targetMethod.addCheckNoRows(JdbcNoRows.Kind.THROW_EXCEPTION, resultType.optional());</span>
+<span class="fc bfc" id="L215" title="All 2 branches covered.">        if (converter instanceof Jdbc2JavaConverter.ColumnConverter column) {</span>
+<span class="fc" id="L216">            column.addColumnByIndex(this.targetMethod, &quot;result&quot;, ColumnIndex.ofValue(1), resultType.optional());</span>
+<span class="pc bpc" id="L217" title="1 of 2 branches missed.">        } else if (converter instanceof ConverterRowObjects cro) {</span>
+<span class="fc" id="L218">            var map = new HashMap&lt;String, ColumnIndex&gt;();</span>
+<span class="fc bfc" id="L219" title="All 2 branches covered.">            for (int i = 0; i &lt; returnGeneratedColumns.length; i++) {</span>
+<span class="fc" id="L220">                map.put(returnGeneratedColumns[i], ColumnIndex.ofValue(i + 1));</span>
+            }
+<span class="fc" id="L222">            cro.addResultSetToRow(this.targetMethod, &quot;result&quot;, resultType.optional(), map);</span>
+<span class="pc bnc" id="L223" title="All 2 branches missed.">        } else if (converter instanceof Jdbc2JavaConverter.RowConverter row) {</span>
+<span class="nc" id="L224">            row.addResultSetToRow(this.targetMethod, &quot;result&quot;, resultType.optional());</span>
+        } else {
+<span class="nc" id="L226">            throw new IllegalArgumentException(&quot;Unsupported JDBC-to-Java converter type: &quot; + converter.getClass().getName());</span>
+        }
+<span class="fc" id="L228">        this.targetMethod.addCheckNoMoreRows(JdbcNoMoreRows.Kind.THROW_EXCEPTION);</span>
+<span class="fc" id="L229">        this.targetMethod.addStatement(&quot;return result&quot;);</span>
+
+<span class="fc" id="L231">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L232">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L233">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L234">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L235">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L236">    }</span>
+
+    private boolean validateReturnGeneratedColumns(String[] returnGeneratedColumns, Jdbc2JavaConverter converter) {
+<span class="fc" id="L239">        var names = new HashSet&lt;String&gt;();</span>
+<span class="fc bfc" id="L240" title="All 2 branches covered.">        for (int i = 0; i &lt; returnGeneratedColumns.length; i++) {</span>
+<span class="fc" id="L241">            var name = returnGeneratedColumns[i];</span>
+<span class="fc bfc" id="L242" title="All 2 branches covered.">            if (name.isBlank()) {</span>
+<span class="fc" id="L243">                this.messages.add(JdbcMsg.jdbcUpdateReturnGeneratedColumnMustNotBeBlank(i));</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">            } else if (!names.add(name)) {</span>
+<span class="fc" id="L245">                this.messages.add(JdbcMsg.jdbcUpdateReturnGeneratedColumnMustBeUnique(name));</span>
+            }
+        }
+<span class="fc bfc" id="L248" title="All 2 branches covered.">        if (this.messages.hasMessages()) {</span>
+<span class="fc" id="L249">            return false;</span>
+        }
+<span class="fc bfc" id="L251" title="All 2 branches covered.">        if (converter instanceof Jdbc2JavaConverter.ColumnConverter) {</span>
+<span class="fc bfc" id="L252" title="All 2 branches covered.">            if (returnGeneratedColumns.length != 1) {</span>
+<span class="fc" id="L253">                this.messages.add(JdbcMsg.jdbcUpdateReturnGeneratedColumnsScalarRequiresOne());</span>
+<span class="fc" id="L254">                return false;</span>
+            }
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">        } else if (converter instanceof ConverterRowObjects rowConverter) {</span>
+<span class="fc bfc" id="L257" title="All 2 branches covered.">            for (var name : rowConverter.jdbcNames()) {</span>
+<span class="fc bfc" id="L258" title="All 2 branches covered.">                if (!names.contains(name)) {</span>
+<span class="fc" id="L259">                    this.messages.add(JdbcMsg.jdbcUpdateReturnGeneratedColumnsRowRequires(name));</span>
+                }
+<span class="fc" id="L261">            }</span>
+        }
+<span class="fc bfc" id="L263" title="All 2 branches covered.">        return !this.messages.hasMessages();</span>
+    }
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -6,8 +6,7 @@ package io.kaumei.jdbc.anno.jdbc2java;
 
 import com.palantir.javapoet.CodeBlock;
 import io.kaumei.jdbc.anno.gen.TargetMethod;
-import io.kaumei.jdbc.anno.model.OptionalFlag;
-import io.kaumei.jdbc.anno.model.SQLNameDV;
+import io.kaumei.jdbc.anno.model.*;
 import io.kaumei.jdbc.anno.store.SourceDV;
 
 import javax.lang.model.element.Element;
@@ -16,57 +15,72 @@ import javax.lang.model.element.Name;
 import javax.lang.model.type.TypeMirror;
 import java.util.Optional;
 
-final class ConverterColumnResultSet extends Jdbc2JavaConverter {
+final class ConverterColumnResultSet extends Jdbc2JavaConverter.ColumnConverter {
 
     private final Element typeElement;
     private final Name methodName;
 
-    ConverterColumnResultSet(TypeMirror type, SourceDV source, ExecutableElement method) {
-<span class="fc" id="L25">        super(type, source);</span>
-<span class="fc" id="L26">        this.typeElement = method.getEnclosingElement();</span>
-<span class="fc" id="L27">        this.methodName = method.getSimpleName();</span>
-<span class="fc" id="L28">    }</span>
+    ConverterColumnResultSet(TypeMirror type, SourceDV source, Visibility visibility, ExecutableElement method) {
+<span class="fc" id="L24">        super(type, source, visibility);</span>
+<span class="fc" id="L25">        this.typeElement = method.getEnclosingElement();</span>
+<span class="fc" id="L26">        this.methodName = method.getSimpleName();</span>
+<span class="fc" id="L27">    }</span>
 
     @Override
     public String toString() {
-<span class="fc" id="L32">        return &quot;ConverterColumnResultSet{typeElement=&quot; + typeElement + &quot;, methodName=&quot; + methodName + '}';</span>
+<span class="fc" id="L31">        return &quot;ConverterColumnResultSet{typeElement=&quot; + typeElement + &quot;, methodName=&quot; + methodName + '}';</span>
     }
 
     // ------------------------------------------------------------------------
 
     @Override
-    public boolean isColumn() {
-<span class="fc" id="L39">        return true;</span>
+    public boolean hasSqlType() {
+<span class="nc" id="L38">        return false;</span>
     }
 
     @Override
-    public CodeBlock nullCheck(String varName) {
-<span class="fc" id="L44">        return CodeBlock.of(&quot;$L == null&quot;, varName);</span>
+    public SQLTypeDV sqlType() {
+<span class="nc" id="L43">        throw new IllegalStateException(&quot;Converter does not provide an SQL type&quot;);</span>
+    }
+
+    @Deprecated
+    public TypeMirror sourceType() {
+<span class="nc" id="L48">        throw new IllegalStateException(&quot;Converter does not provide an SQL type&quot;);</span>
+    }
+
+    @Override
+    public CodeBlock columnNullCheck(String varName) {
+<span class="nc" id="L53">        return CodeBlock.of(&quot;$L == null&quot;, varName);</span>
+    }
+
+    @Override
+    public CodeBlock callNullCheck(String varName) {
+<span class="nc" id="L58">        throw new IllegalStateException(&quot;Converter does not provide an SQL type&quot;);</span>
     }
 
     @Override
     public void addColumnByIndex(TargetMethod builder, String localVarName, ColumnIndex index, OptionalFlag optional) {
-<span class="fc" id="L49">        builder.addComment(&quot;ConverterColumnResultSet.addColumnByIndex&quot;, &quot;type&quot;, type(), &quot;optional&quot;, optional);</span>
-<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (optional.isOptionalType()) {</span>
-<span class="fc" id="L51">            builder.addStatement(&quot;var $L = $T.ofNullable($T.$N(rs, $L))&quot;, localVarName,</span>
-<span class="fc" id="L52">                    Optional.class, this.typeElement, this.methodName, index.columnIndexVar());</span>
+<span class="fc" id="L63">        builder.addComment(&quot;ConverterColumnResultSet.addColumnByIndex&quot;, &quot;type&quot;, type(), &quot;optional&quot;, optional);</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (optional.isOptionalType()) {</span>
+<span class="fc" id="L65">            builder.addStatement(&quot;var $L = $T.ofNullable($T.$N(rs, $L))&quot;, localVarName,</span>
+<span class="fc" id="L66">                    Optional.class, this.typeElement, this.methodName, index.columnIndexVar());</span>
         } else {
-<span class="fc" id="L54">            builder.addStatement(&quot;var $L = $T.$N(rs, $L)&quot;, localVarName, this.typeElement, this.methodName, index.columnIndexVar());</span>
-<span class="fc bfc" id="L55" title="All 2 branches covered.">            if (optional.isNonNull()) {</span>
-<span class="fc" id="L56">                builder.beginControlFlow(&quot;if($L)&quot;, nullCheck(localVarName));</span>
-<span class="fc" id="L57">                builder.addThrowColumnWasNull(index);</span>
-<span class="fc" id="L58">                builder.endControlFlow();</span>
+<span class="fc" id="L68">            builder.addStatement(&quot;var $L = $T.$N(rs, $L)&quot;, localVarName, this.typeElement, this.methodName, index.columnIndexVar());</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">            if (optional.isNonNull()) {</span>
+<span class="fc" id="L70">                builder.beginControlFlow(&quot;if($L == null)&quot;, localVarName);</span>
+<span class="fc" id="L71">                builder.addThrowColumnWasNull(index);</span>
+<span class="fc" id="L72">                builder.endControlFlow();</span>
             }
         }
-<span class="fc" id="L61">    }</span>
+<span class="fc" id="L75">    }</span>
 
     @Override
     public void addColumnByName(TargetMethod builder, String localVarName, SQLNameDV columnName, OptionalFlag optional) {
-<span class="fc" id="L65">        builder.addComment(&quot;ConverterColumnResultSet.addColumnByName&quot;, &quot;type&quot;, type(), &quot;optional&quot;, optional);</span>
-<span class="fc" id="L66">        var index = ColumnIndex.ofVariable(builder.tempVarName(localVarName), columnName);</span>
-<span class="fc" id="L67">        builder.addStatement(&quot;var $N = rs.findColumn($S)&quot;, index.columnIndexVar(), index.columnName());</span>
-<span class="fc" id="L68">        addColumnByIndex(builder, localVarName, index, optional);</span>
-<span class="fc" id="L69">    }</span>
+<span class="fc" id="L79">        builder.addComment(&quot;ConverterColumnResultSet.addColumnByName&quot;, &quot;type&quot;, type(), &quot;optional&quot;, optional);</span>
+<span class="fc" id="L80">        var index = ColumnIndex.ofVariable(builder.tempVarName(localVarName), columnName);</span>
+<span class="fc" id="L81">        builder.addStatement(&quot;var $N = rs.findColumn($S)&quot;, index.columnIndexVar(), index.columnName());</span>
+<span class="fc" id="L82">        addColumnByIndex(builder, localVarName, index, optional);</span>
+<span class="fc" id="L83">    }</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>KaumeiTx.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-annotation</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.annotation</a> &gt; <span class="el_source">KaumeiTx.java</span></div><h1>KaumeiTx.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2026 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.annotation;
+
+import java.lang.annotation.*;
+
+/**
+ * Declares transaction handling for a type or method.
+ */
+@Documented
+@Inherited
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.METHOD})
+public @interface KaumeiTx {
+
+    /**
+     * Transaction type. Defaults to {@link Type#MANDATORY} so transaction boundaries must be
+     * declared explicitly.
+     */
+    Type value() default Type.MANDATORY;
+
+    /**
+     * Required transaction isolation.
+     */
+    Isolation isolation() default Isolation.DEFAULT;
+
+    /**
+     * Required read-only mode.
+     */
+    ReadOnly readOnly() default ReadOnly.DEFAULT;
+
+    /**
+     * Exception types that require rollback.
+     */
+    Class&lt;? extends Throwable&gt;[] rollbackOn() default {};
+
+    /**
+     * Exception types that do not require rollback.
+     */
+    Class&lt;? extends Throwable&gt;[] dontRollbackOn() default {};
+
+<span class="fc" id="L44">    enum Type {</span>
+<span class="fc" id="L45">        REQUIRED,</span>
+<span class="fc" id="L46">        REQUIRES_NEW,</span>
+<span class="fc" id="L47">        MANDATORY,</span>
+<span class="fc" id="L48">        SUPPORTS,</span>
+<span class="fc" id="L49">        NOT_SUPPORTED,</span>
+<span class="fc" id="L50">        NEVER</span>
+    }
+
+<span class="fc" id="L53">    enum Isolation {</span>
+<span class="fc" id="L54">        DEFAULT,</span>
+<span class="fc" id="L55">        READ_UNCOMMITTED,</span>
+<span class="fc" id="L56">        READ_COMMITTED,</span>
+<span class="fc" id="L57">        REPEATABLE_READ,</span>
+<span class="fc" id="L58">        SERIALIZABLE</span>
+    }
+
+<span class="fc" id="L61">    enum ReadOnly {</span>
+<span class="fc" id="L62">        DEFAULT,</span>
+<span class="fc" id="L63">        READ_ONLY,</span>
+<span class="fc" id="L64">        READ_WRITE</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

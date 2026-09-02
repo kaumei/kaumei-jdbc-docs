@@ -6,11 +6,14 @@ package io.kaumei.jdbc.anno.gen;
 
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.MethodSpec;
-import io.kaumei.jdbc.JdbcException;
 import io.kaumei.jdbc.anno.ctx.ConfigService;
 import io.kaumei.jdbc.anno.ctx.Context;
 import io.kaumei.jdbc.anno.jdbc2java.ColumnIndex;
-import io.kaumei.jdbc.anno.model.*;
+import io.kaumei.jdbc.anno.jdbc2java.Jdbc2JavaConverter;
+import io.kaumei.jdbc.anno.model.JdbcTypeKind;
+import io.kaumei.jdbc.anno.model.JdbcTypeMirror;
+import io.kaumei.jdbc.anno.model.SQLNameDV;
+import io.kaumei.jdbc.anno.model.SourceMethod;
 import io.kaumei.jdbc.anno.msg.JdbcMsg;
 import io.kaumei.jdbc.anno.msg.Msg;
 import io.kaumei.jdbc.anno.store.SearchKey;
@@ -19,8 +22,9 @@ import io.kaumei.jdbc.annotation.config.JdbcNoMoreRows;
 import io.kaumei.jdbc.annotation.config.JdbcNoRows;
 import io.kaumei.jdbc.annotation.config.JdbcResultSetConcurrency;
 import io.kaumei.jdbc.annotation.config.JdbcResultSetType;
-import io.kaumei.jdbc.impl.JdbcUtils;
-import io.kaumei.jdbc.impl.ResultSetUtils;
+import io.kaumei.jdbc.core.JdbcException;
+import io.kaumei.jdbc.core.JdbcUtils;
+import io.kaumei.jdbc.core.ResultSetUtils;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.ExecutableElement;
@@ -29,250 +33,265 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
 
-class GenerateJdbcSelect implements GenerateJdbc {
+final class GenerateJdbcSelect implements GenerateJdbc {
     // ----- services
     private final Context ctx;
     // ----- state
-    private final SourceMethod sourceMethod;
+    private final SourceMethod.Select sourceMethod;
     private final TargetMethod targetMethod;
     private final Msg.Builder messages;
 
-<span class="fc" id="L40">    GenerateJdbcSelect(Context ctx, SourceMethod sourceMethod) {</span>
-<span class="fc" id="L41">        this.ctx = ctx;</span>
-<span class="fc" id="L42">        this.sourceMethod = sourceMethod;</span>
-<span class="fc" id="L43">        this.targetMethod = new TargetMethod(this.ctx, sourceMethod.method());</span>
-<span class="fc" id="L44">        this.messages = Msg.builder();</span>
-<span class="fc" id="L45">    }</span>
+<span class="fc" id="L44">    GenerateJdbcSelect(Context ctx, SourceMethod.Select sourceMethod) {</span>
+<span class="fc" id="L45">        this.ctx = ctx;</span>
+<span class="fc" id="L46">        this.sourceMethod = sourceMethod;</span>
+<span class="fc" id="L47">        this.targetMethod = new TargetMethod(this.ctx, sourceMethod.method());</span>
+<span class="fc" id="L48">        this.messages = Msg.builder();</span>
+<span class="fc" id="L49">    }</span>
 
     // ------------------------------------------------------------------------
 
     public MethodSpec generateMethod() {
-<span class="fc" id="L50">        this.ctx.logger.debug(&quot;---- JdbcSelect ---- &quot;,</span>
+<span class="fc" id="L54">        this.ctx.logger.debug(&quot;---- JdbcSelect ---- &quot;,</span>
                 &quot;method&quot;, sourceMethod,
-<span class="fc" id="L52">                &quot;returnType&quot;, sourceMethod.method().getReturnType());</span>
+<span class="fc" id="L56">                &quot;returnType&quot;, sourceMethod.method().getReturnType());</span>
 
-<span class="fc" id="L54">        var returnType = sourceMethod.returnType();</span>
-<span class="pc bpc" id="L55" title="1 of 5 branches missed.">        switch (returnType.kind()) { // JaCoCo:ignore</span>
+<span class="fc" id="L58">        var returnType = sourceMethod.returnType();</span>
+<span class="pc bpc" id="L59" title="1 of 5 branches missed.">        switch (returnType.kind()) {</span>
             case VOID:
-<span class="fc" id="L57">                messages.add(JdbcMsg.jdbcSelectRequiresSupportedReturnType(returnType));</span>
-<span class="fc" id="L58">                break;</span>
+<span class="fc" id="L61">                messages.add(JdbcMsg.jdbcSelectRequiresSupportedReturnType(returnType));</span>
+<span class="fc" id="L62">                break;</span>
             case BOOLEAN, BYTE, SHORT, INT, LONG, CHAR, FLOAT, DOUBLE,
                  RECORD, ENUM, UNKNOWN, ARRAY, KAUMEI_JDBC_ROW:
-<span class="fc" id="L61">                selectValue(returnType);</span>
-<span class="fc" id="L62">                break;</span>
+<span class="fc" id="L65">                selectValue(returnType);</span>
+<span class="fc" id="L66">                break;</span>
             case LIST:
-<span class="fc" id="L64">                selectJavaList(returnType);</span>
-<span class="fc" id="L65">                break;</span>
+<span class="fc" id="L68">                selectJavaList(returnType);</span>
+<span class="fc" id="L69">                break;</span>
             case STREAM, KAUMEI_JDBC_ITERABLE, KAUMEI_JDBC_RESULT_SET:
-<span class="fc" id="L67">                selectStreamIterableResultSet(returnType);</span>
-<span class="fc" id="L68">                break;</span>
+<span class="fc" id="L71">                selectStreamIterableResultSet(returnType);</span>
+<span class="fc" id="L72">                break;</span>
             default:
-<span class="nc" id="L70">                throw new IllegalStateException(sourceMethod + &quot;: illegal kind:&quot; + returnType.kind()); // sanity-check</span>
+<span class="nc" id="L74">                throw new IllegalStateException(sourceMethod + &quot;: illegal kind:&quot; + returnType.kind()); // sanity-check</span>
         }
-<span class="fc" id="L72">        this.messages.add(sourceMethod.unusedAnno());</span>
-<span class="fc" id="L73">        return this.targetMethod.build(this.messages.build(), &quot;@JdbcSelect method invalid&quot;);</span>
+<span class="fc" id="L76">        this.messages.add(sourceMethod.unusedAnno());</span>
+<span class="fc" id="L77">        return this.targetMethod.build(this.messages.build(), &quot;@JdbcSelect method invalid&quot;);</span>
     }
 
     // ------------------------------------------------------------------------
 
     private void selectValue(JdbcTypeMirror&lt;ExecutableElement&gt; returnType) {
-<span class="fc" id="L79">        var returnTypeOptional = returnType.optional();</span>
-<span class="fc" id="L80">        var request = SearchKey.of(returnType.type(), sourceMethod.jdbcConverterName());</span>
-<span class="fc" id="L81">        var noRows = this.sourceMethod.jdbcNoRows();</span>
-<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (returnType.kind() == JdbcTypeKind.KAUMEI_JDBC_ROW) {</span>
-<span class="fc bfc" id="L83" title="All 2 branches covered.">            if (returnTypeOptional.isNonNull()) {</span>
-<span class="fc" id="L84">                this.messages.add(JdbcMsg.jdbcSelectJdbcRowRequiresNullableOrOptional(returnTypeOptional));</span>
+<span class="fc" id="L83">        var returnTypeOptional = returnType.optional();</span>
+<span class="fc" id="L84">        var request = SearchKey.of(returnType.type(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L85">        var noRows = this.sourceMethod.jdbcNoRows();</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (returnType.kind() == JdbcTypeKind.KAUMEI_JDBC_ROW) {</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">            if (returnTypeOptional.isNonNull()) {</span>
+<span class="fc" id="L88">                this.messages.add(JdbcMsg.jdbcSelectJdbcRowRequiresNullableOrOptional(returnTypeOptional));</span>
             } else {
                 // adjust the search type and optional to the component of JdbcRow
-<span class="fc" id="L87">                request = SearchKey.of(returnType.cmpType(), sourceMethod.jdbcConverterName());</span>
-<span class="fc" id="L88">                returnTypeOptional = returnType.cmpOptional();</span>
+<span class="fc" id="L91">                request = SearchKey.of(returnType.cmpType(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L92">                returnTypeOptional = returnType.cmpOptional();</span>
             }
-<span class="fc bfc" id="L90" title="All 2 branches covered.">        } else if (noRows == JdbcNoRows.Kind.RETURN_NULL) {</span>
-<span class="fc bfc" id="L91" title="All 2 branches covered.">            if (returnTypeOptional.isNonNull()) {</span>
-<span class="fc" id="L92">                this.messages.add(JdbcMsg.jdbcSelectNoRowsReturnNullRequiresNullableOrOptional(returnTypeOptional));</span>
-<span class="fc bfc" id="L93" title="All 2 branches covered.">            } else if (returnTypeOptional.isOptionalType()) {</span>
-<span class="fc" id="L94">                this.messages.add(JdbcMsg.jdbcSelectNoRowsReturnNullRequiresNullable(returnTypeOptional));</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        } else if (noRows == JdbcNoRows.Kind.RETURN_NULL) {</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">            if (returnTypeOptional.isNonNull()) {</span>
+<span class="fc" id="L96">                this.messages.add(JdbcMsg.jdbcSelectNoRowsReturnNullRequiresNullableOrOptional(returnTypeOptional));</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">            } else if (returnTypeOptional.isOptionalType()) {</span>
+<span class="fc" id="L98">                this.messages.add(JdbcMsg.jdbcSelectNoRowsReturnNullRequiresNullable(returnTypeOptional));</span>
             }
         }
-<span class="fc bfc" id="L97" title="All 2 branches covered.">        if (this.messages.hasMessages()) {</span>
-<span class="fc" id="L98">            return;</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        if (this.messages.hasMessages()) {</span>
+<span class="fc" id="L102">            return;</span>
         }
 
-<span class="fc" id="L101">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
-<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
-<span class="fc" id="L103">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
-<span class="fc" id="L104">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
-<span class="fc" id="L105">            return;</span>
+<span class="fc" id="L105">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
+<span class="fc" id="L107">            var converterMessages = Msg.builder().add(searchResult.messages());</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">            if (returnType.kind() == JdbcTypeKind.ARRAY) {</span>
+<span class="fc" id="L109">                converterMessages.add(JdbcMsg.jdbcSelectArrayReturnTypeRequiresConverter(returnType.type().toString()));</span>
+            }
+<span class="fc" id="L111">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
+<span class="fc" id="L112">                    SourceDV.converter(ctx, sourceMethod.method()), request, converterMessages.build()));</span>
+<span class="fc" id="L113">            return;</span>
         }
 
-<span class="fc" id="L108">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
-<span class="fc" id="L109">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
-<span class="fc" id="L110">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
-<span class="fc" id="L111">        targetMethod.beginControlFlow(&quot;try (var stmt = con.prepareStatement(sql))&quot;);</span>
-<span class="fc" id="L112">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
-<span class="fc" id="L113">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L116">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L117">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L118">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="fc" id="L119">        targetMethod.beginControlFlow(&quot;try (var stmt = $L)&quot;, prepareStatement(sourceMethod.jdbcResultSetType(), sourceMethod.jdbcResultSetConcurrency()));</span>
+<span class="fc" id="L120">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L121">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L122">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchDirection($L.sqlMagicNumber())&quot;, sourceMethod.jdbcFetchDirection());</span>
 
-<span class="fc" id="L115">        var noMoreRows = this.sourceMethod.jdbcNoMoreRows();</span>
-<span class="fc bfc" id="L116" title="All 2 branches covered.">        if (noMoreRows == JdbcNoMoreRows.Kind.THROW_EXCEPTION) {</span>
-<span class="fc" id="L117">            targetMethod.addStatement(&quot;stmt.setFetchSize(2)&quot;);</span>
-<span class="fc" id="L118">            targetMethod.addStatement(&quot;stmt.setMaxRows(2)&quot;);</span>
+<span class="fc" id="L124">        var noMoreRows = sourceMethod.jdbcNoMoreRows();</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        var internalRowLimit = noMoreRows == JdbcNoMoreRows.Kind.THROW_EXCEPTION ? 2 : 1;</span>
+<span class="fc" id="L126">        var fetchSize = sourceMethod.jdbcFetchSize();</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (fetchSize == null) {</span>
+<span class="fc" id="L128">            targetMethod.addStatement(&quot;stmt.setFetchSize($L)&quot;, internalRowLimit);</span>
         } else {
-<span class="fc" id="L120">            targetMethod.addStatement(&quot;stmt.setFetchSize(1)&quot;);</span>
-<span class="fc" id="L121">            targetMethod.addStatement(&quot;stmt.setMaxRows(1)&quot;);</span>
+<span class="fc" id="L130">            targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchSize($L)&quot;, fetchSize);</span>
         }
-<span class="fc" id="L123">        targetMethod.beginControlFlow(&quot;try (var rs = stmt.executeQuery())&quot;);</span>
+<span class="fc" id="L132">        targetMethod.addStatement(&quot;stmt.setMaxRows($L)&quot;, internalRowLimit);</span>
 
-<span class="fc" id="L125">        targetMethod.addCheckNoRows(noRows, returnType.optional());</span>
-<span class="fc" id="L126">        var converter = searchResult.value();</span>
-<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (converter.isColumn()) {</span>
-<span class="fc" id="L128">            var jdbcName = sourceMethod.jdbcName();</span>
-<span class="fc bfc" id="L129" title="All 2 branches covered.">            if (jdbcName.hasName()) {</span>
-<span class="fc" id="L130">                converter.addColumnByName(targetMethod, &quot;result&quot;, jdbcName, returnTypeOptional);</span>
+<span class="fc" id="L134">        targetMethod.beginControlFlow(&quot;try (var rs = stmt.executeQuery())&quot;);</span>
+
+<span class="fc" id="L136">        targetMethod.addCheckNoRows(noRows, returnType.optional());</span>
+<span class="fc" id="L137">        var converter = searchResult.value();</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (converter instanceof Jdbc2JavaConverter.ColumnConverter column) {</span>
+<span class="fc" id="L139">            var jdbcName = sourceMethod.jdbcName();</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">            if (jdbcName.hasName()) {</span>
+<span class="fc" id="L141">                column.addColumnByName(targetMethod, &quot;result&quot;, jdbcName, returnTypeOptional);</span>
             } else {
-<span class="fc" id="L132">                converter.addColumnByIndex(targetMethod, &quot;result&quot;, ColumnIndex.ofValue(1), returnTypeOptional);</span>
+<span class="fc" id="L143">                column.addColumnByIndex(targetMethod, &quot;result&quot;, ColumnIndex.ofValue(1), returnTypeOptional);</span>
             }
-<span class="fc" id="L134">        } else {</span>
-<span class="fc" id="L135">            converter.addResultSetToRow(targetMethod, &quot;result&quot;, returnTypeOptional);</span>
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">        } else if (converter instanceof Jdbc2JavaConverter.RowConverter row) {</span>
+<span class="fc" id="L146">            row.addResultSetToRow(targetMethod, &quot;result&quot;, returnTypeOptional);</span>
+        } else {
+<span class="nc" id="L148">            throw new IllegalArgumentException(&quot;Unsupported JDBC-to-Java converter type: &quot; + converter.getClass().getName());</span>
         }
-<span class="fc" id="L137">        targetMethod.addCheckNoMoreRows(noMoreRows);</span>
+<span class="fc" id="L150">        targetMethod.addCheckNoMoreRows(noMoreRows);</span>
 
-<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (returnType.kind() == JdbcTypeKind.KAUMEI_JDBC_ROW) {</span>
-<span class="fc bfc" id="L140" title="All 2 branches covered.">            if (returnType.optional().isOptionalType()) {</span>
-<span class="fc" id="L141">                targetMethod.addStatement(&quot;return $T.of(new $T(result))&quot;, Optional.class, returnType.type());</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        if (returnType.kind() == JdbcTypeKind.KAUMEI_JDBC_ROW) {</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">            if (returnType.optional().isOptionalType()) {</span>
+<span class="fc" id="L154">                targetMethod.addStatement(&quot;return $T.of(new $T(result))&quot;, Optional.class, returnType.type());</span>
             } else {
-<span class="fc" id="L143">                targetMethod.addStatement(&quot;return new $T(result)&quot;, returnType.type());</span>
+<span class="fc" id="L156">                targetMethod.addStatement(&quot;return new $T(result)&quot;, returnType.type());</span>
             }
         } else {
-<span class="fc" id="L146">            targetMethod.addStatement(&quot;return result&quot;);</span>
+<span class="fc" id="L159">            targetMethod.addStatement(&quot;return result&quot;);</span>
         }
 
-<span class="fc" id="L149">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L150">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L151">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
-<span class="fc" id="L152">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
-<span class="fc" id="L153">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L154">    }</span>
+<span class="fc" id="L162">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L163">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L164">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L165">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L166">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L167">    }</span>
 
     private void selectJavaList(JdbcTypeMirror&lt;ExecutableElement&gt; returnType) {
-<span class="fc" id="L157">        var optReason = returnType.optional().checkNonNullOrUnspecified();</span>
-<span class="fc bfc" id="L158" title="All 2 branches covered.">        if (optReason != null) {</span>
-<span class="fc" id="L159">            this.messages.add(JdbcMsg.jdbcSelectRequiresNonNullOrUnspecifiedReturnType(returnType.optional()));</span>
-<span class="fc" id="L160">            return;</span>
+<span class="fc" id="L170">        var optReason = returnType.optional().checkNonNullOrUnspecified();</span>
+<span class="fc bfc" id="L171" title="All 2 branches covered.">        if (optReason != null) {</span>
+<span class="fc" id="L172">            this.messages.add(JdbcMsg.jdbcSelectRequiresNonNullOrUnspecifiedReturnType(returnType.optional()));</span>
+<span class="fc" id="L173">            return;</span>
         }
 
-<span class="fc" id="L163">        var request = SearchKey.of(returnType.cmpType(), sourceMethod.jdbcConverterName());</span>
-<span class="fc" id="L164">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
-<span class="fc" id="L165">        this.ctx.logger.debug(&quot;selectJavaList&quot;, &quot;returnType&quot;, returnType, &quot;searchResult&quot;, searchResult);</span>
-<span class="fc bfc" id="L166" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
-<span class="fc" id="L167">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
-<span class="fc" id="L168">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
-<span class="fc" id="L169">            return;</span>
-<span class="fc bfc" id="L170" title="All 4 branches covered.">        } else if (!searchResult.value().isColumn() &amp;&amp; hasInvalidRowReturnComponent(returnType)) {</span>
-<span class="fc" id="L171">            return;</span>
+<span class="fc" id="L176">        var request = SearchKey.of(returnType.cmpType(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L177">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
+<span class="fc" id="L178">        this.ctx.logger.debug(&quot;selectJavaList&quot;, &quot;returnType&quot;, returnType, &quot;searchResult&quot;, searchResult);</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
+<span class="fc" id="L180">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
+<span class="fc" id="L181">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
+<span class="fc" id="L182">            return;</span>
+<span class="fc bfc" id="L183" title="All 2 branches covered.">        } else if (searchResult.value() instanceof Jdbc2JavaConverter.RowConverter &amp;&amp;</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">                hasInvalidRowReturnComponent(returnType)) {</span>
+<span class="fc" id="L185">            return;</span>
         }
 
-<span class="fc" id="L174">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
-<span class="fc" id="L175">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
-<span class="fc" id="L176">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
-<span class="fc" id="L177">        targetMethod.beginControlFlow(&quot;try (var stmt = $L)&quot;, prepareStatement(sourceMethod.jdbcResultSetType(), sourceMethod.jdbcResultSetConcurrency()));</span>
-<span class="fc" id="L178">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
-<span class="fc" id="L179">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchDirection($L.sqlMagicNumber())&quot;, sourceMethod.jdbcFetchDirection());</span>
-<span class="fc" id="L180">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchSize($L)&quot;, sourceMethod.jdbcFetchSize());</span>
-<span class="fc" id="L181">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setMaxRows($L)&quot;, sourceMethod.jdbcMaxRows());</span>
-<span class="fc" id="L182">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
-<span class="fc" id="L183">        targetMethod.beginControlFlow(&quot;try (var resultSet = stmt.executeQuery())&quot;);</span>
+<span class="fc" id="L188">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L189">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L190">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="fc" id="L191">        targetMethod.beginControlFlow(&quot;try (var stmt = $L)&quot;, prepareStatement(sourceMethod.jdbcResultSetType(), sourceMethod.jdbcResultSetConcurrency()));</span>
+<span class="fc" id="L192">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L193">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchDirection($L.sqlMagicNumber())&quot;, sourceMethod.jdbcFetchDirection());</span>
+<span class="fc" id="L194">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchSize($L)&quot;, sourceMethod.jdbcFetchSize());</span>
+<span class="fc" id="L195">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setMaxRows($L)&quot;, sourceMethod.jdbcMaxRows());</span>
+<span class="fc" id="L196">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L197">        targetMethod.beginControlFlow(&quot;try (var resultSet = stmt.executeQuery())&quot;);</span>
 
-<span class="fc bfc" id="L185" title="All 2 branches covered.">        var jdbcName = searchResult.value().isColumn() ? sourceMethod.jdbcName() : SQLNameDV.noName();</span>
-<span class="fc" id="L186">        var lambda = targetMethod.lambda(jdbcName, returnType.cmpOptional(), searchResult.value());</span>
-<span class="fc" id="L187">        targetMethod.addStatement(&quot;return $T.toList(resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">        var jdbcName = searchResult.value() instanceof Jdbc2JavaConverter.ColumnConverter ? sourceMethod.jdbcName() : SQLNameDV.noName();</span>
+<span class="fc" id="L200">        var lambda = targetMethod.lambda(jdbcName, returnType.cmpOptional(), searchResult.value());</span>
+<span class="fc" id="L201">        targetMethod.addStatement(&quot;return $T.toList(resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
 
-<span class="fc" id="L189">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L190">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L191">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
-<span class="fc" id="L192">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
-<span class="fc" id="L193">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L194">    }</span>
+<span class="fc" id="L203">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L204">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L205">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, SQLException.class);</span>
+<span class="fc" id="L206">        targetMethod.addStatement(&quot;throw new $T(e.getMessage(), e)&quot;, JdbcException.class);</span>
+<span class="fc" id="L207">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L208">    }</span>
 
     private void selectStreamIterableResultSet(JdbcTypeMirror&lt;ExecutableElement&gt; returnType) {
-<span class="fc" id="L197">        var optReason = returnType.optional().checkNonNullOrUnspecified();</span>
-<span class="fc bfc" id="L198" title="All 2 branches covered.">        if (optReason != null) {</span>
-<span class="fc" id="L199">            this.messages.add(JdbcMsg.jdbcSelectRequiresNonNullOrUnspecifiedReturnType(returnType.optional()));</span>
-<span class="fc" id="L200">            return;</span>
+<span class="fc" id="L211">        var optReason = returnType.optional().checkNonNullOrUnspecified();</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">        if (optReason != null) {</span>
+<span class="fc" id="L213">            this.messages.add(JdbcMsg.jdbcSelectRequiresNonNullOrUnspecifiedReturnType(returnType.optional()));</span>
+<span class="fc" id="L214">            return;</span>
         }
-<span class="fc" id="L202">        var request = SearchKey.of(returnType.cmpType(), sourceMethod.jdbcConverterName());</span>
-<span class="fc" id="L203">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
-<span class="fc bfc" id="L204" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
-<span class="fc" id="L205">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
-<span class="fc" id="L206">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
-<span class="fc" id="L207">            return;</span>
-<span class="fc bfc" id="L208" title="All 4 branches covered.">        } else if (!searchResult.value().isColumn() &amp;&amp; hasInvalidRowReturnComponent(returnType)) {</span>
-<span class="fc" id="L209">            return;</span>
+<span class="fc" id="L216">        var request = SearchKey.of(returnType.cmpType(), sourceMethod.jdbcConverterName());</span>
+<span class="fc" id="L217">        var searchResult = ctx.kaumeiJdbc2Java.searchJava(sourceMethod.method(), request);</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (searchResult.hasMessages()) {</span>
+<span class="fc" id="L219">            this.messages.add(JdbcMsg.invalidJdbcToJavaResultConverter(</span>
+<span class="fc" id="L220">                    SourceDV.converter(ctx, sourceMethod.method()), request, searchResult.messages()));</span>
+<span class="fc" id="L221">            return;</span>
+<span class="fc bfc" id="L222" title="All 2 branches covered.">        } else if (searchResult.value() instanceof Jdbc2JavaConverter.RowConverter</span>
+<span class="fc bfc" id="L223" title="All 2 branches covered.">                &amp;&amp; hasInvalidRowReturnComponent(returnType)) {</span>
+<span class="fc" id="L224">            return;</span>
         }
 
-<span class="fc" id="L212">        targetMethod.addComment(&quot;stream&quot;);</span>
+<span class="fc" id="L227">        targetMethod.addComment(&quot;stream&quot;);</span>
 
-<span class="fc" id="L214">        targetMethod.addStatement(&quot;$T stmt = null&quot;, PreparedStatement.class);</span>
-<span class="fc" id="L215">        targetMethod.addStatement(&quot;$T resultSet = null&quot;, ResultSet.class);</span>
-<span class="fc" id="L216">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
-<span class="fc" id="L217">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
-<span class="fc" id="L218">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
-<span class="fc" id="L219">        targetMethod.addStatement(&quot;stmt = $L&quot;, prepareStatement(sourceMethod.jdbcResultSetType(), sourceMethod.jdbcResultSetConcurrency()));</span>
-<span class="fc" id="L220">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
-<span class="fc" id="L221">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchDirection($L.sqlMagicNumber())&quot;, sourceMethod.jdbcFetchDirection());</span>
-<span class="fc" id="L222">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchSize($L)&quot;, sourceMethod.jdbcFetchSize());</span>
-<span class="fc" id="L223">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setMaxRows($L)&quot;, sourceMethod.jdbcMaxRows());</span>
-<span class="fc" id="L224">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
-<span class="fc" id="L225">        targetMethod.addStatement(&quot;resultSet = stmt.executeQuery()&quot;);</span>
+<span class="fc" id="L229">        targetMethod.addStatement(&quot;$T stmt = null&quot;, PreparedStatement.class);</span>
+<span class="fc" id="L230">        targetMethod.addStatement(&quot;$T resultSet = null&quot;, ResultSet.class);</span>
+<span class="fc" id="L231">        targetMethod.beginControlFlow(&quot;try&quot;);</span>
+<span class="fc" id="L232">        targetMethod.addStatement(&quot;var con = supplier.getConnection()&quot;);</span>
+<span class="fc" id="L233">        targetMethod.addCodeBlock(this.ctx.kaumeiJdbcGenerator.buildSqlVariable(sourceMethod, targetMethod, &quot;sql&quot;));</span>
+<span class="fc" id="L234">        targetMethod.addStatement(&quot;stmt = $L&quot;, prepareStatement(sourceMethod.jdbcResultSetType(), sourceMethod.jdbcResultSetConcurrency()));</span>
+<span class="fc" id="L235">        this.ctx.kaumeiJdbcGenerator.processParameter(messages, sourceMethod, targetMethod);</span>
+<span class="fc" id="L236">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchDirection($L.sqlMagicNumber())&quot;, sourceMethod.jdbcFetchDirection());</span>
+<span class="fc" id="L237">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setFetchSize($L)&quot;, sourceMethod.jdbcFetchSize());</span>
+<span class="fc" id="L238">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setMaxRows($L)&quot;, sourceMethod.jdbcMaxRows());</span>
+<span class="fc" id="L239">        targetMethod.addIfAnnotationIsPresent(&quot;stmt.setQueryTimeout($L)&quot;, this.sourceMethod.jdbcQueryTimeout());</span>
+<span class="fc" id="L240">        targetMethod.addStatement(&quot;resultSet = stmt.executeQuery()&quot;);</span>
 
-<span class="fc bfc" id="L227" title="All 2 branches covered.">        var jdbcName = searchResult.value().isColumn() ? sourceMethod.jdbcName() : SQLNameDV.noName();</span>
-<span class="fc" id="L228">        var lambda = targetMethod.lambda(jdbcName, returnType.cmpOptional(), searchResult.value());</span>
+<span class="fc bfc" id="L242" title="All 2 branches covered.">        var jdbcName = searchResult.value() instanceof Jdbc2JavaConverter.ColumnConverter ? sourceMethod.jdbcName() : SQLNameDV.noName();</span>
+<span class="fc" id="L243">        var lambda = targetMethod.lambda(jdbcName, returnType.cmpOptional(), searchResult.value());</span>
 
-<span class="pc bpc" id="L230" title="1 of 4 branches missed.">        switch (returnType.kind()) { // JaCoCo:ignore</span>
-            case STREAM -&gt;
-<span class="fc" id="L232">                    targetMethod.addStatement(&quot;return $T.toStream(stmt, resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
+<span class="pc bpc" id="L245" title="1 of 4 branches missed.">        switch (returnType.kind()) {</span>
+            case STREAM -&gt; {
+<span class="fc" id="L247">                var optional = returnType.cmpOptional();</span>
+<span class="fc bfc" id="L248" title="All 4 branches covered.">                var nonNull = optional.isNonNull() || optional.isOptionalType();</span>
+<span class="fc" id="L249">                targetMethod.addStatement(&quot;return $T.toStream(stmt, resultSet, $L, $L)&quot;,</span>
+<span class="fc" id="L250">                        ResultSetUtils.class, lambda.toString(), nonNull);</span>
+<span class="fc" id="L251">            }</span>
             case KAUMEI_JDBC_RESULT_SET -&gt;
-<span class="fc" id="L234">                    targetMethod.addStatement(&quot;return $T.toJdbcResultSet(stmt, resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
+<span class="fc" id="L253">                    targetMethod.addStatement(&quot;return $T.toJdbcResultSet(stmt, resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
             case KAUMEI_JDBC_ITERABLE -&gt;
-<span class="fc" id="L236">                    targetMethod.addStatement(&quot;return $T.toJdbcIterable(stmt, resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
+<span class="fc" id="L255">                    targetMethod.addStatement(&quot;return $T.toJdbcIterable(stmt, resultSet, $L)&quot;, ResultSetUtils.class, lambda.toString());</span>
             default -&gt; // sanity-check
-<span class="nc" id="L238">                    throw new IllegalStateException(&quot;Invalid kind: &quot; + returnType.kind()); // sanity-check</span>
+<span class="nc" id="L257">                    throw new IllegalStateException(&quot;Invalid kind: &quot; + returnType.kind()); // sanity-check</span>
         }
 
-<span class="fc" id="L241">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, Exception.class);</span>
-<span class="fc" id="L242">        targetMethod.addStatement(&quot;$T.close(e, stmt, resultSet)&quot;, JdbcUtils.class);</span>
-<span class="fc" id="L243">        targetMethod.addStatement(&quot;throw e instanceof $T re ? re :new $T(e.getMessage(), e)&quot;, RuntimeException.class, JdbcException.class);</span>
-<span class="fc" id="L244">        targetMethod.endControlFlow();</span>
-<span class="fc" id="L245">    }</span>
+<span class="fc" id="L260">        targetMethod.nextControlFlow(&quot;catch ($T e)&quot;, Exception.class);</span>
+<span class="fc" id="L261">        targetMethod.addStatement(&quot;$T.close(e, stmt, resultSet)&quot;, JdbcUtils.class);</span>
+<span class="fc" id="L262">        targetMethod.addStatement(&quot;throw e instanceof $T re ? re :new $T(e.getMessage(), e)&quot;, RuntimeException.class, JdbcException.class);</span>
+<span class="fc" id="L263">        targetMethod.endControlFlow();</span>
+<span class="fc" id="L264">    }</span>
 
     // -----------------------------------------------------------------
 
     private boolean hasInvalidRowReturnComponent(JdbcTypeMirror&lt;ExecutableElement&gt; returnType) {
-<span class="fc bfc" id="L250" title="All 2 branches covered.">        if (returnType.cmpOptional().isNonNullOrUnspecified()) {</span>
-<span class="fc" id="L251">            return false;</span>
+<span class="fc bfc" id="L269" title="All 2 branches covered.">        if (returnType.cmpOptional().isNonNullOrUnspecified()) {</span>
+<span class="fc" id="L270">            return false;</span>
         }
-<span class="fc" id="L253">        this.messages.add(JdbcMsg.jdbcSelectRequiresNonNullOrUnspecifiedRowReturnComponent(returnType.cmpOptional()));</span>
-<span class="fc" id="L254">        return true;</span>
+<span class="fc" id="L272">        this.messages.add(JdbcMsg.jdbcSelectRequiresNonNullOrUnspecifiedRowReturnComponent(returnType.cmpOptional()));</span>
+<span class="fc" id="L273">        return true;</span>
     }
 
     // -----------------------------------------------------------------
 
     private CodeBlock prepareStatement(ConfigService.@Nullable OptionValue&lt;JdbcResultSetType.Kind&gt; resultSetType,
                                        ConfigService.@Nullable OptionValue&lt;JdbcResultSetConcurrency.Kind&gt; resultSetConcurrency) {
-<span class="fc bfc" id="L261" title="All 4 branches covered.">        if (resultSetType == null &amp;&amp; resultSetConcurrency == null) {</span>
-<span class="fc" id="L262">            return CodeBlock.of(&quot;con.prepareStatement(sql)&quot;);</span>
-<span class="fc bfc" id="L263" title="All 4 branches covered.">        } else if (resultSetType != null &amp;&amp; resultSetConcurrency != null) {</span>
-<span class="fc bfc" id="L264" title="All 2 branches covered.">            if (resultSetType instanceof ConfigService.OptionValue.Dynamic d) {</span>
-<span class="fc" id="L265">                this.targetMethod.addCodeBlock(targetMethod.checkValue(d));</span>
+<span class="fc bfc" id="L280" title="All 4 branches covered.">        if (resultSetType == null &amp;&amp; resultSetConcurrency == null) {</span>
+<span class="fc" id="L281">            return CodeBlock.of(&quot;con.prepareStatement(sql)&quot;);</span>
+<span class="fc bfc" id="L282" title="All 4 branches covered.">        } else if (resultSetType != null &amp;&amp; resultSetConcurrency != null) {</span>
+<span class="fc bfc" id="L283" title="All 2 branches covered.">            if (resultSetType instanceof ConfigService.OptionValue.Dynamic&lt;?&gt; d) {</span>
+<span class="fc" id="L284">                this.targetMethod.addCodeBlock(targetMethod.checkValue(d));</span>
             }
-<span class="fc bfc" id="L267" title="All 2 branches covered.">            if (resultSetConcurrency instanceof ConfigService.OptionValue.Dynamic d) {</span>
-<span class="fc" id="L268">                this.targetMethod.addCodeBlock(targetMethod.checkValue(d));</span>
+<span class="fc bfc" id="L286" title="All 2 branches covered.">            if (resultSetConcurrency instanceof ConfigService.OptionValue.Dynamic&lt;?&gt; d) {</span>
+<span class="fc" id="L287">                this.targetMethod.addCodeBlock(targetMethod.checkValue(d));</span>
             }
-<span class="fc" id="L270">            return CodeBlock.of(&quot;con.prepareStatement(sql, $L.sqlMagicNumber(), $L.sqlMagicNumber())&quot;,</span>
-<span class="fc" id="L271">                    targetMethod.accessValue(resultSetType),</span>
-<span class="fc" id="L272">                    targetMethod.accessValue(resultSetConcurrency));</span>
+<span class="fc" id="L289">            return CodeBlock.of(&quot;con.prepareStatement(sql, $L.sqlMagicNumber(), $L.sqlMagicNumber())&quot;,</span>
+<span class="fc" id="L290">                    targetMethod.accessValue(resultSetType),</span>
+<span class="fc" id="L291">                    targetMethod.accessValue(resultSetConcurrency));</span>
         }
-<span class="fc" id="L274">        this.messages.add(JdbcMsg.JDBC_SELECT_REQUIRES_RESULT_SET_TYPE_AND_CONCURRENCY);</span>
-<span class="fc" id="L275">        return CodeBlock.of(&quot;null&quot;);</span>
+<span class="fc" id="L293">        this.messages.add(JdbcMsg.JDBC_SELECT_REQUIRES_RESULT_SET_TYPE_AND_CONCURRENCY);</span>
+<span class="fc" id="L294">        return CodeBlock.of(&quot;null&quot;);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

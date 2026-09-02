@@ -27,88 +27,120 @@ public class AnnoMap {
                 }
             }
 <span class="fc" id="L29">        }</span>
-<span class="fc" id="L30">        return new AnnoMap(anno2value);</span>
+<span class="fc" id="L30">        return new AnnoMap(ctx, anno2value);</span>
     }
 
     // ------------------------------------------------------------------------
 
+    private final Context ctx;
     private final Map&lt;JavaAnnoType&lt;?&gt;, Object&gt; anno2value;
     private final Set&lt;JavaAnnoType&lt;?&gt;&gt; unused;
 
-<span class="fc" id="L38">    private AnnoMap(Map&lt;JavaAnnoType&lt;?&gt;, Object&gt; anno2value) {</span>
-<span class="fc" id="L39">        this.anno2value = anno2value;</span>
-<span class="fc" id="L40">        this.unused = new HashSet&lt;&gt;(this.anno2value.keySet());</span>
-<span class="fc" id="L41">    }</span>
+<span class="fc" id="L39">    private AnnoMap(Context ctx, Map&lt;JavaAnnoType&lt;?&gt;, Object&gt; anno2value) {</span>
+<span class="fc" id="L40">        this.ctx = ctx;</span>
+<span class="fc" id="L41">        this.anno2value = anno2value;</span>
+<span class="fc" id="L42">        this.unused = new HashSet&lt;&gt;(this.anno2value.keySet());</span>
+<span class="fc" id="L43">    }</span>
 
     @Override
     public String toString() {
-<span class="nc" id="L45">        return anno2value.toString();</span>
+<span class="nc" id="L47">        return anno2value.toString();</span>
     }
 
     // ------------------------------------------------------------------------
 
     public void consume(JavaAnnoType&lt;?&gt; anno) {
-<span class="fc" id="L51">        unused.remove(anno);</span>
-<span class="fc" id="L52">    }</span>
+<span class="fc" id="L53">        unused.remove(anno);</span>
+<span class="fc" id="L54">    }</span>
 
-    @Nullable
-    public &lt;T&gt; T getOpt(JavaAnnoType&lt;T&gt; anno) {
-<span class="fc" id="L56">        var value = this.anno2value.get(anno);</span>
-<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (value != null) {</span>
-<span class="fc" id="L58">            unused.remove(anno);</span>
-<span class="fc" id="L59">            return anno.cast(value);</span>
+    public &lt;T&gt; @Nullable T getOpt(JavaAnnoType&lt;T&gt; anno) {
+<span class="fc" id="L57">        var value = this.anno2value.get(anno);</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L59">            unused.remove(anno);</span>
+<span class="fc" id="L60">            return anno.cast(value);</span>
         }
-<span class="fc" id="L61">        return null;</span>
+<span class="fc" id="L62">        return null;</span>
     }
 
     public &lt;T&gt; T get(JavaAnnoType&lt;T&gt; anno, T defaultValue) {
-<span class="fc" id="L65">        var value = this.anno2value.get(anno);</span>
-<span class="fc bfc" id="L66" title="All 2 branches covered.">        if (value != null) {</span>
-<span class="fc" id="L67">            unused.remove(anno);</span>
-<span class="fc" id="L68">            return anno.cast(value);</span>
+<span class="fc" id="L66">        var value = this.anno2value.get(anno);</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L68">            unused.remove(anno);</span>
+<span class="fc" id="L69">            return anno.cast(value);</span>
         }
-<span class="fc" id="L70">        return defaultValue;</span>
+<span class="fc" id="L71">        return defaultValue;</span>
     }
 
-
-    @Nullable
-    public &lt;T&gt; T getOpt(ConfigService.Option&lt;T&gt; option) {
-<span class="fc" id="L76">        var value = this.anno2value.get(option.anno());</span>
-<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (value != null) {</span>
-<span class="fc" id="L78">            unused.remove(option.anno());</span>
-<span class="fc" id="L79">            return option.cast(value);</span>
+    public &lt;T&gt; @Nullable T getOpt(ConfigService.Option&lt;T&gt; option) {
+<span class="fc" id="L75">        var value = this.anno2value.get(option.anno());</span>
+<span class="fc bfc" id="L76" title="All 2 branches covered.">        if (value != null) {</span>
+<span class="fc" id="L77">            unused.remove(option.anno());</span>
+<span class="fc" id="L78">            return option.cast(value);</span>
         }
-<span class="fc" id="L81">        return null;</span>
+<span class="fc" id="L80">        return null;</span>
     }
 
-    @Nullable
-    public &lt;T&gt; T getIfNotDefault(ConfigService.Option&lt;T&gt; option) {
-<span class="fc" id="L86">        var value = this.anno2value.get(option.anno());</span>
-<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (option.isNotDefaultValue(value)) {</span>
-<span class="fc" id="L88">            unused.remove(option.anno());</span>
-<span class="fc" id="L89">            return option.cast(value);</span>
+    public &lt;T&gt; @Nullable T getIfNotDefault(ConfigService.Option&lt;T&gt; option) {
+<span class="fc" id="L84">        var value = this.anno2value.get(option.anno());</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (option.isNotDefaultValue(value)) {</span>
+<span class="fc" id="L86">            unused.remove(option.anno());</span>
+<span class="fc" id="L87">            return option.cast(value);</span>
         }
-<span class="fc" id="L91">        return null;</span>
+<span class="fc" id="L89">        return null;</span>
     }
 
-    @Nullable
-    public &lt;T&gt; T getIfDefault(ConfigService.Option&lt;T&gt; option) {
-<span class="fc" id="L96">        var value = this.anno2value.get(option.anno());</span>
-<span class="fc bfc" id="L97" title="All 2 branches covered.">        if (option.isDefaultValue(value)) {</span>
-<span class="fc" id="L98">            unused.remove(option.anno());</span>
-<span class="fc" id="L99">            return option.cast(value);</span>
+    public &lt;T&gt; @Nullable T getIfDefault(ConfigService.Option&lt;T&gt; option) {
+<span class="fc" id="L93">        var value = this.anno2value.get(option.anno());</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        if (option.isDefaultValue(value)) {</span>
+<span class="fc" id="L95">            unused.remove(option.anno());</span>
+<span class="fc" id="L96">            return option.cast(value);</span>
         }
-<span class="fc" id="L101">        return null;</span>
+<span class="fc" id="L98">        return null;</span>
     }
 
     // ------------------------------------------------------------------------
 
     public boolean hasUnused() {
-<span class="fc bfc" id="L107" title="All 2 branches covered.">        return !unused.isEmpty();</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        return !unused.isEmpty();</span>
     }
 
     public Set&lt;JavaAnnoType&lt;?&gt;&gt; unused() {
-<span class="fc" id="L111">        return Collections.unmodifiableSet(unused);</span>
+<span class="fc" id="L108">        return Collections.unmodifiableSet(unused);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+<span class="fc" id="L113">    public record JdbcEntryPoints(int count,</span>
+                                  JavaAnnoType.@Nullable JdbcBatchUpdateRecord batchUpdate,
+                                  JavaAnnoType.@Nullable JdbcCallRecord call,
+                                  JavaAnnoType.@Nullable JdbcNativeRecord nativeJdbc,
+                                  JavaAnnoType.@Nullable JdbcSelectRecord select,
+                                  JavaAnnoType.@Nullable JdbcUpdateRecord update) {
+    }
+
+    public JdbcEntryPoints entryPoints() {
+<span class="fc" id="L122">        int count = 0;</span>
+<span class="fc" id="L123">        var batchUpdate = this.getOpt(ctx.JDBC_BATCH_UPDATE);</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        if (batchUpdate != null) {</span>
+<span class="fc" id="L125">            count++;</span>
+        }
+<span class="fc" id="L127">        var call = this.getOpt(ctx.JDBC_CALL);</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">        if (call != null) {</span>
+<span class="fc" id="L129">            count++;</span>
+        }
+<span class="fc" id="L131">        var nativeJdbc = this.getOpt(ctx.JDBC_NATIVE);</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        if (nativeJdbc != null) {</span>
+<span class="fc" id="L133">            count++;</span>
+        }
+<span class="fc" id="L135">        var select = this.getOpt(ctx.JDBC_SELECT);</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">        if (select != null) {</span>
+<span class="fc" id="L137">            count++;</span>
+        }
+<span class="fc" id="L139">        var update = this.getOpt(ctx.JDBC_UPDATE);</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">        if (update != null) {</span>
+<span class="fc" id="L141">            count++;</span>
+        }
+<span class="fc" id="L143">        return new JdbcEntryPoints(count, batchUpdate, call, nativeJdbc, select, update);</span>
     }
 
 }

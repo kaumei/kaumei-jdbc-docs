@@ -71,7 +71,7 @@ import static java.util.Objects.requireNonNull;
 
     @Override
     public &lt;T&gt; Msg.NullableResult&lt;T&gt; buildOpt(@Nullable T value) {
-<span class="fc" id="L74">        return new MessageResultNullableImpl&lt;T&gt;(value);</span>
+<span class="fc" id="L74">        return new MessageResultNullableImpl&lt;&gt;(value);</span>
     }
 
     // ------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import com.palantir.javapoet.CodeBlock;
 import io.kaumei.jdbc.anno.gen.KaumeiLib;
 import io.kaumei.jdbc.anno.gen.TargetMethod;
 import io.kaumei.jdbc.anno.model.OptionalFlag;
+import io.kaumei.jdbc.anno.model.Visibility;
 import io.kaumei.jdbc.anno.store.SearchKey;
 import io.kaumei.jdbc.anno.store.SourceDV;
 
@@ -15,16 +16,16 @@ import javax.lang.model.type.TypeMirror;
 
 final class ConverterEnum extends Java2JdbcConverter {
 
-<span class="fc" id="L18">    record Placeholder(TypeMirror type, SourceDV source,</span>
+<span class="fc" id="L19">    record Placeholder(TypeMirror type, SourceDV source, Visibility visibility,</span>
                        SearchKey other) implements Java2JdbcConverter.Placeholder {
         @Override
         public SearchKey otherPlaceholder() {
-<span class="fc" id="L22">            return other;</span>
+<span class="fc" id="L23">            return other;</span>
         }
 
         @Override
         public Java2JdbcConverter resolve(Java2JdbcConverter converter) {
-<span class="fc" id="L27">            return new ConverterEnum(this, converter);</span>
+<span class="fc" id="L28">            return new ConverterEnum(this, converter);</span>
         }
     }
 
@@ -33,24 +34,24 @@ final class ConverterEnum extends Java2JdbcConverter {
     private final Java2JdbcConverter converter;
 
     private ConverterEnum(Placeholder placeholder, Java2JdbcConverter converter) {
-<span class="fc" id="L36">        super(placeholder.type, placeholder.source);</span>
-<span class="fc" id="L37">        this.converter = converter;</span>
-<span class="fc" id="L38">    }</span>
+<span class="fc" id="L37">        super(placeholder.type, placeholder.source, placeholder.visibility.and(converter.visibility()));</span>
+<span class="fc" id="L38">        this.converter = converter;</span>
+<span class="fc" id="L39">    }</span>
 
     @Override
     public void setParameter(TargetMethod builder, CodeBlock paramAccess, CodeBlock columnIndex, OptionalFlag optional) {
-<span class="fc" id="L42">        builder.addComment(&quot;ConverterEnum&quot;, &quot;id&quot;, this.type(), &quot;optional&quot;, optional);</span>
-<span class="fc" id="L43">        var localName = builder.tempVarName(paramAccess);</span>
-<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (optional.isNonNull()) {</span>
-<span class="fc" id="L45">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
-<span class="fc" id="L46">            builder.addStatement(KaumeiLib.throwNullPointerException(paramAccess));</span>
-<span class="fc" id="L47">            builder.endControlFlow();</span>
-<span class="fc" id="L48">            builder.addStatement(&quot;var $L = $L.name()&quot;, localName, paramAccess);</span>
-<span class="fc" id="L49">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+<span class="fc" id="L43">        builder.addComment(&quot;ConverterEnum&quot;, &quot;id&quot;, this.type(), &quot;optional&quot;, optional);</span>
+<span class="fc" id="L44">        var localName = builder.tempVarName(paramAccess);</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (optional.isNonNull()) {</span>
+<span class="fc" id="L46">            builder.beginControlFlow(&quot;if ($L == null)&quot;, paramAccess);</span>
+<span class="fc" id="L47">            builder.addStatement(KaumeiLib.throwNullPointerException(paramAccess));</span>
+<span class="fc" id="L48">            builder.endControlFlow();</span>
+<span class="fc" id="L49">            builder.addStatement(&quot;var $L = $L.name()&quot;, localName, paramAccess);</span>
+<span class="fc" id="L50">            converter.setParameter(builder, localName, columnIndex, optional);</span>
         } else {
-<span class="fc" id="L51">            builder.addStatement(&quot;var $L = $L == null ? null : $L.name()&quot;, localName, paramAccess, paramAccess);</span>
-<span class="fc" id="L52">            converter.setParameter(builder, localName, columnIndex, optional);</span>
+<span class="fc" id="L52">            builder.addStatement(&quot;var $L = $L == null ? null : $L.name()&quot;, localName, paramAccess, paramAccess);</span>
+<span class="fc" id="L53">            converter.setParameter(builder, localName, columnIndex, optional);</span>
         }
-<span class="fc" id="L54">    }</span>
+<span class="fc" id="L55">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

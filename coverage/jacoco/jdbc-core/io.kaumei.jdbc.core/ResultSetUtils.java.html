@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ResultSetUtils.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-core</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.core</a> &gt; <span class="el_source">ResultSetUtils.java</span></div><h1>ResultSetUtils.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2025 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.core;
+
+import io.kaumei.jdbc.annotation.JdbcToJava;
+import io.kaumei.jdbc.core.internal.JdbcIterableImpl;
+import io.kaumei.jdbc.core.internal.JdbcIterator;
+import io.kaumei.jdbc.core.internal.JdbcResultSetImpl;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+public final class ResultSetUtils {
+
+    private ResultSetUtils() {
+        // prevent instantiation
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static &lt;T&gt; List&lt;T&gt; toList(ResultSet rs, JdbcToJava.Row&lt;T&gt; converter) throws SQLException {
+<span class="fc" id="L29">        var list = new ArrayList&lt;T&gt;();</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">        while (rs.next()) {</span>
+<span class="fc" id="L31">            list.add(converter.mapRowToJava(rs));</span>
+        }
+<span class="fc" id="L33">        return Collections.unmodifiableList(list);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static &lt;T&gt; Stream&lt;T&gt; toStream(PreparedStatement stmt, ResultSet rs, JdbcToJava.Row&lt;T&gt; converter, boolean nonNull) {
+        try {
+<span class="fc" id="L40">            var iterator = new JdbcIterator&lt;&gt;(rs, converter);</span>
+<span class="fc" id="L41">            var characteristic = Spliterator.IMMUTABLE;</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">            if (nonNull) {</span>
+<span class="fc" id="L43">                characteristic |= Spliterator.NONNULL;</span>
+            }
+<span class="fc" id="L45">            var split = Spliterators.spliteratorUnknownSize(iterator, characteristic);</span>
+<span class="fc" id="L46">            return StreamSupport.stream(split, false).onClose(() -&gt; JdbcUtils.close(stmt, rs));</span>
+<span class="nc" id="L47">        } catch (Exception e) {</span>
+<span class="nc" id="L48">            JdbcUtils.close(e, stmt, rs);</span>
+<span class="nc" id="L49">            throw e;</span>
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static &lt;T&gt; JdbcIterable&lt;T&gt; toJdbcIterable(Statement stmt, ResultSet rs, JdbcToJava.Row&lt;T&gt; converter) {
+<span class="fc" id="L56">        return new JdbcIterableImpl&lt;&gt;(stmt, rs, converter);</span>
+    }
+
+    // ------------------------------------------------------------------------
+
+    public static &lt;T&gt; JdbcResultSet&lt;T&gt; toJdbcResultSet(Statement stmt, ResultSet rs, JdbcToJava.Row&lt;T&gt; converter) {
+<span class="fc" id="L62">        return new JdbcResultSetImpl&lt;&gt;(stmt, rs, converter);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

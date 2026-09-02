@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-vdxcvpsm"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Transaction API | Kaumei JDBC</title><link rel="canonical" href="https://kaumei-jdbc.kaumei.io/transaction-spec/transaction-api/"/><link rel="sitemap" href="/sitemap-index.xml"/><link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.2.0"/><meta name="generator" content="Starlight v0.41.7"/><meta property="og:title" content="Transaction API"/><meta property="og:type" content="article"/><meta property="og:url" content="https://kaumei-jdbc.kaumei.io/transaction-spec/transaction-api/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Programmatic transaction callbacks, definitions, state operations, and synchronisation."/><meta property="og:site_name" content="Kaumei JDBC"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Programmatic transaction callbacks, definitions, state operations, and synchronisation."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/_astro/common.CuW30Miw.css"><style>@layer starlight.components{.card:where(.astro-zts4jgjd){--sl-card-border:var(--sl-color-purple);--sl-card-bg:var(--sl-color-purple-low);border:1px solid var(--sl-color-gray-5);background-color:var(--sl-color-black);flex-direction:column;gap:clamp(.5rem,.125rem + 1vw,1rem);padding:clamp(1rem,.125rem + 3vw,2.5rem)}.card:where(.astro-zts4jgjd):nth-child(4n+1){--sl-card-border:var(--sl-color-orange);--sl-card-bg:var(--sl-color-orange-low)}.card:where(.astro-zts4jgjd):nth-child(4n+3){--sl-card-border:var(--sl-color-green);--sl-card-bg:var(--sl-color-green-low)}.card:where(.astro-zts4jgjd):nth-child(4n+4){--sl-card-border:var(--sl-color-red);--sl-card-bg:var(--sl-color-red-low)}.card:where(.astro-zts4jgjd):nth-child(4n+5){--sl-card-border:var(--sl-color-blue);--sl-card-bg:var(--sl-color-blue-low)}.title:where(.astro-zts4jgjd){font-weight:600;font-size:var(--sl-text-h4);color:var(--sl-color-white);line-height:var(--sl-line-height-headings);align-items:center;gap:1rem}.card:where(.astro-zts4jgjd) .icon:where(.astro-zts4jgjd){border:1px solid var(--sl-card-border);background-color:var(--sl-card-bg);border-radius:.25rem;flex-shrink:0;padding:.2em}.card:where(.astro-zts4jgjd) .body:where(.astro-zts4jgjd){font-size:clamp(var(--sl-text-sm), calc(.5rem + 1vw), var(--sl-text-body));margin:0}.card-grid:where(.astro-lmor3ela){grid-template-columns:100%;gap:1rem;display:grid}.card-grid:where(.astro-lmor3ela)>*{margin-top:0!important}@media (width>=50rem){.card-grid:where(.astro-lmor3ela){grid-template-columns:1fr 1fr;gap:1.5rem}.stagger:where(.astro-lmor3ela){--stagger-height:5rem;padding-bottom:var(--stagger-height)}.stagger:where(.astro-lmor3ela)>:nth-child(2n){transform:translateY(var(--stagger-height))}}}
+@layer starlight.components{svg:where(.astro-n5k4ipy7){color:var(--sl-icon-color);font-size:var(--sl-icon-size,1em);width:1em;height:1em}}
+</style><script type="module" src="/_astro/page.Dwipeu-R.js"></script></head><body class="astro-vdxcvpsm"><a class="sl-skip-link astro-vxeigawq" href="#_top">Skip to content</a><div class="page sl-flex astro-gqpr5s5a"><header class="header astro-gqpr5s5a"><div class="header astro-nczgtkxc"><div class="title-wrapper sl-flex astro-nczgtkxc"><a href="/" class="site-title sl-flex astro-clw6ags5"><img class="light:sl-hidden print:hidden astro-clw6ags5" alt="Kaumei JDBC" src="/_astro/Logo_Kaumei_JDBC-dark.CvGqKfw5.svg" width="1505" height="272"><img class="dark:sl-hidden print:block astro-clw6ags5" alt="Kaumei JDBC" src="/_astro/Logo_Kaumei_JDBC-light.Ctrgw8B2.svg" width="1505" height="272"><span class="sr-only astro-clw6ags5" translate="no">Kaumei JDBC</span></a></div><div class="sl-flex print:hidden astro-nczgtkxc"><site-search class="astro-nczgtkxc astro-r5ar4xm7" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-r5ar4xm7"><svg aria-hidden="true" class="astro-r5ar4xm7 astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-r5ar4xm7" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-r5ar4xm7" style="display: none;"><kbd class="astro-r5ar4xm7">Ctrl</kbd><kbd class="astro-r5ar4xm7">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-r5ar4xm7"><div class="dialog-frame sl-flex astro-r5ar4xm7"><button data-close-modal class="sl-flex md:sl-hidden astro-r5ar4xm7">Cancel</button><div class="search-container astro-r5ar4xm7"><div id="starlight__search" class="astro-r5ar4xm7"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/_astro/Search.astro_astro_type_script_index_0_lang.B-Vh4ymV.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-nczgtkxc"><div class="sl-flex social-icons astro-nczgtkxc"><a href="https://codeberg.org/kaumei/kaumei-jdbc" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">Codeberg</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .5a12 12 0 0 0-12 12 12 12 0 0 0 1.8 6.4l10-13a.2.1 0 0 1 .4 0l10 13a12 12 0 0 0 1.8-6.4 12 12 0 0 0-12-12zm.3 6.5 4.4 16.5a12 12 0 0 0 5.2-4.2z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-gqpr5s5a" aria-label="Main"><starlight-menu-button class="print:hidden astro-vvx7mffu"><button aria-expanded="false" aria-label="Menu" aria-controls="starlight__sidebar" class="sl-flex md:sl-hidden astro-vvx7mffu"><svg aria-hidden="true" class="open-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-vvx7mffu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg></button></starlight-menu-button><script type="module">var e=class extends HTMLElement{btn=this.querySelector(`button`);constructor(){super(),this.btn.addEventListener(`click`,()=>this.toggleExpanded());let e=this.closest(`nav`);e&&e.addEventListener(`keyup`,e=>this.closeOnEscape(e)),matchMedia(`(min-width: 50em)`).addEventListener(`change`,()=>this.setExpanded(!1))}setExpanded(e){this.setAttribute(`aria-expanded`,String(e)),document.body.toggleAttribute(`data-mobile-menu-expanded`,e),document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}toggleExpanded(){this.setExpanded(this.getAttribute(`aria-expanded`)!==`true`)}closeOnEscape(e){e.code===`Escape`&&(this.setExpanded(!1),this.btn.focus())}};customElements.define(`starlight-menu-button`,e);</script><div id="starlight__sidebar" class="sidebar-pane astro-gqpr5s5a"><div class="sidebar-content sl-flex astro-gqpr5s5a"><sl-sidebar-state-persist data-hash="0ezf1ny" class="astro-f5yvicm7"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-ojxuodky"><li class="astro-ojxuodky"><details class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Introduction</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/intro/introduction/" class="astro-ojxuodky"><span class="astro-ojxuodky">Introduction</span></a></li><li class="astro-ojxuodky"><a href="/intro/why-kaumei/" class="astro-ojxuodky"><span class="astro-ojxuodky">Why Kaumei JDBC</span></a></li><li class="astro-ojxuodky"><a href="/intro/installation/" class="astro-ojxuodky"><span class="astro-ojxuodky">Installation</span></a></li><li class="astro-ojxuodky"><a href="/intro/example/" class="astro-ojxuodky"><span class="astro-ojxuodky">Simple example</span></a></li><li class="astro-ojxuodky"><a href="/intro/ai-and-kaumei/" class="astro-ojxuodky"><span class="astro-ojxuodky">AI and Code Generation</span></a></li></ul></details></li><li class="astro-ojxuodky"><details class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Guides</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/guides/parameter/" class="astro-ojxuodky"><span class="astro-ojxuodky">Mapping Java parameters to JDBC</span></a></li><li class="astro-ojxuodky"><a href="/guides/result-mapping/" class="astro-ojxuodky"><span class="astro-ojxuodky">Mapping JDBC results to Java return types</span></a></li><li class="astro-ojxuodky"><a href="/guides/advanced-jdbc/" class="astro-ojxuodky"><span class="astro-ojxuodky">Advanced JDBC usage</span></a></li><li class="astro-ojxuodky"><a href="/guides/processor-configuration/" class="astro-ojxuodky"><span class="astro-ojxuodky">Processor configuration</span></a></li><li class="astro-ojxuodky"><a href="/guides/transactions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Transactions</span></a></li></ul></details></li><li class="astro-ojxuodky"><details class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Integration</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/integration/overview/" class="astro-ojxuodky"><span class="astro-ojxuodky">Integration overview</span></a></li><li class="astro-ojxuodky"><a href="/integration/avaje/" class="astro-ojxuodky"><span class="astro-ojxuodky">Avaje Inject</span></a></li><li class="astro-ojxuodky"><a href="/integration/datasource/" class="astro-ojxuodky"><span class="astro-ojxuodky">Spring DataSource</span></a></li><li class="astro-ojxuodky"><a href="/integration/hibernate/" class="astro-ojxuodky"><span class="astro-ojxuodky">Spring Hibernate</span></a></li><li class="astro-ojxuodky"><a href="/integration/jpa/" class="astro-ojxuodky"><span class="astro-ojxuodky">Spring JPA with Hibernate</span></a></li></ul></details></li><li class="astro-ojxuodky"><details class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">JDBC Processor</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/processor-spec/overview/" class="astro-ojxuodky"><span class="astro-ojxuodky">JDBC Processor</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/annotation-reference/" class="astro-ojxuodky"><span class="astro-ojxuodky">Processor Annotation Index</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/configuration/" class="astro-ojxuodky"><span class="astro-ojxuodky">Processor Configuration</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/nullness-contract/" class="astro-ojxuodky"><span class="astro-ojxuodky">Nullness Contract</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/converter-lookup/" class="astro-ojxuodky"><span class="astro-ojxuodky">Converter Lookup</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/param-binding/" class="astro-ojxuodky"><span class="astro-ojxuodky">Parameter Binding</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/result-mapping/" class="astro-ojxuodky"><span class="astro-ojxuodky">Result Mapping</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/jdbc-select/" class="astro-ojxuodky"><span class="astro-ojxuodky">JDBC Select</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/jdbc-update/" class="astro-ojxuodky"><span class="astro-ojxuodky">JDBC Update</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/jdbc-call/" class="astro-ojxuodky"><span class="astro-ojxuodky">JDBC Call</span></a></li><li class="astro-ojxuodky"><a href="/processor-spec/jdbc-native/" class="astro-ojxuodky"><span class="astro-ojxuodky">JDBC Native</span></a></li></ul></details></li><li class="astro-ojxuodky"><details open class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Transaction Manager</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/transaction-spec/transaction-manager/" class="astro-ojxuodky"><span class="astro-ojxuodky">Transaction Manager</span></a></li><li class="astro-ojxuodky"><a href="/transaction-spec/transaction-semantics/" class="astro-ojxuodky"><span class="astro-ojxuodky">Transaction Semantics</span></a></li><li class="astro-ojxuodky"><a href="/transaction-spec/transaction-api/" aria-current="page" class="astro-ojxuodky"><span class="astro-ojxuodky">Transaction API</span></a></li><li class="astro-ojxuodky"><a href="/transaction-spec/declarative-transactions/" class="astro-ojxuodky"><span class="astro-ojxuodky">Declarative Transactions</span></a></li></ul></details></li><li class="astro-ojxuodky"><details class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Roadmap</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/roadmap/release-0-2-0/" class="astro-ojxuodky"><span class="astro-ojxuodky">Release 0.2.0 (2026-09-02)</span></a></li><li class="astro-ojxuodky"><a href="/roadmap/release-0-1-0/" class="astro-ojxuodky"><span class="astro-ojxuodky">Release 0.1.0 (2026-06-27)</span></a></li><li class="astro-ojxuodky"><a href="/roadmap/roadmap/" class="astro-ojxuodky"><span class="astro-ojxuodky">Roadmap</span></a></li></ul></details></li><li class="astro-ojxuodky"><details class="astro-ojxuodky"><summary class="astro-ojxuodky"><span class="group-label astro-ojxuodky"><span class="large astro-ojxuodky">Development</span></span><svg aria-hidden="true" class="caret astro-ojxuodky astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-ojxuodky"><li class="astro-ojxuodky"><a href="/development/coverage/" class="astro-ojxuodky"><span class="astro-ojxuodky">Coverage</span></a></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-b5gddk54"><div class="social-icons astro-b5gddk54"><a href="https://codeberg.org/kaumei/kaumei-jdbc" rel="me" class="sl-flex astro-cg55etiy"><span class="sr-only astro-cg55etiy">Codeberg</span><svg aria-hidden="true" class="astro-cg55etiy astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .5a12 12 0 0 0-12 12 12 12 0 0 0 1.8 6.4l10-13a.2.1 0 0 1 .4 0l10 13a12 12 0 0 0 1.8-6.4 12 12 0 0 0-12-12zm.3 6.5 4.4 16.5a12 12 0 0 0 5.2-4.2z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-r2p65idu"><span class="sr-only astro-r2p65idu">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-r2p65idu"><option value="dark" class="astro-r2p65idu">Dark</option><option value="light" class="astro-r2p65idu">Light</option><option value="auto" selected class="astro-r2p65idu">Auto</option></select><svg aria-hidden="true" class="icon caret astro-r2p65idu astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></div></nav><div class="main-frame astro-gqpr5s5a"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-abfeecmu"><aside class="right-sidebar-container print:hidden astro-abfeecmu"><div class="right-sidebar astro-abfeecmu"><div class="lg:sl-hidden astro-q5mffni3"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-5ulgm6bh"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-5ulgm6bh"><details id="starlight__mobile-toc" class="astro-5ulgm6bh"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-5ulgm6bh"><span class="toggle sl-flex astro-5ulgm6bh">On this page<svg aria-hidden="true" class="caret astro-5ulgm6bh astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-5ulgm6bh"></span></summary><div class="dropdown astro-5ulgm6bh"><ul class="isMobile astro-cxyftcne" style="--depth: 0;"><li style="--depth: 0;" class="astro-cxyftcne"><a href="#_top" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Overview</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#supported-api-boundary" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Supported API boundary</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#construction" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Construction</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#transaction-definition" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Transaction definition</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#callback-methods" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Callback methods</span></a><ul class="isMobile astro-cxyftcne" style="--depth: 1;"><li style="--depth: 1;" class="astro-cxyftcne"><a href="#callback-results" style="--depth: 1;" class="astro-cxyftcne"><span style="--depth: 1;" class="astro-cxyftcne">Callback results</span></a></li></ul></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#transaction-state-operations" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Transaction state operations</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#synchronisation" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Synchronisation</span></a><ul class="isMobile astro-cxyftcne" style="--depth: 1;"><li style="--depth: 1;" class="astro-cxyftcne"><a href="#before-completion" style="--depth: 1;" class="astro-cxyftcne"><span style="--depth: 1;" class="astro-cxyftcne">Before completion</span></a></li><li style="--depth: 1;" class="astro-cxyftcne"><a href="#after-completion" style="--depth: 1;" class="astro-cxyftcne"><span style="--depth: 1;" class="astro-cxyftcne">After completion</span></a></li></ul></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#failure-surface" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Failure surface</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.BcSo_yiZ.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-q5mffni3"><div class="sl-container astro-q5mffni3"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-cxyftcne" style="--depth: 0;"><li style="--depth: 0;" class="astro-cxyftcne"><a href="#_top" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Overview</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#supported-api-boundary" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Supported API boundary</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#construction" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Construction</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#transaction-definition" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Transaction definition</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#callback-methods" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Callback methods</span></a><ul class="astro-cxyftcne" style="--depth: 1;"><li style="--depth: 1;" class="astro-cxyftcne"><a href="#callback-results" style="--depth: 1;" class="astro-cxyftcne"><span style="--depth: 1;" class="astro-cxyftcne">Callback results</span></a></li></ul></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#transaction-state-operations" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Transaction state operations</span></a></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#synchronisation" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Synchronisation</span></a><ul class="astro-cxyftcne" style="--depth: 1;"><li style="--depth: 1;" class="astro-cxyftcne"><a href="#before-completion" style="--depth: 1;" class="astro-cxyftcne"><span style="--depth: 1;" class="astro-cxyftcne">Before completion</span></a></li><li style="--depth: 1;" class="astro-cxyftcne"><a href="#after-completion" style="--depth: 1;" class="astro-cxyftcne"><span style="--depth: 1;" class="astro-cxyftcne">After completion</span></a></li></ul></li><li style="--depth: 0;" class="astro-cxyftcne"><a href="#failure-surface" style="--depth: 0;" class="astro-cxyftcne"><span style="--depth: 0;" class="astro-cxyftcne">Failure surface</span></a></li></ul></nav></starlight-toc><script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.Csloo1VZ.js"></script></div></div></div></aside><div class="main-pane astro-abfeecmu"><main data-pagefind-body class="astro-vdxcvpsm" lang="en" dir="ltr"><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><h1 id="_top" class="astro-2sm4b3ln">Transaction API</h1></div></div><div class="content-panel astro-oil7k7jf"><div class="sl-container astro-oil7k7jf"><div class="sl-markdown-content"><p>This page defines the supported programmatic API in <code dir="auto">io.kaumei.jdbc.tx</code>.
+Propagation and completion behaviour are defined by
+<a href="/transaction-spec/transaction-semantics">Transaction Semantics</a>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="supported-api-boundary">Supported API boundary</h2><a class="sl-anchor-link" href="#supported-api-boundary"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Supported API boundary”</span></a></div>
+<p>Application code may use the public types declared directly in
+<code dir="auto">io.kaumei.jdbc.tx</code>.
+<code dir="auto">io.kaumei.jdbc.tx.internal</code> is an internal implementation package and is not part
+of the supported public API.
+Its classes may change or be removed without compatibility guarantees.</p>
+<p><code dir="auto">InterfaceWrapper</code> and <code dir="auto">TransactionInterceptors</code> are internal test
+infrastructure even though their Java declarations are currently public.
+They are not application integration APIs.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="construction">Construction</h2><a class="sl-anchor-link" href="#construction"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Construction”</span></a></div>
+<span><code style="color: red;" title="io.kaumei.jdbc.tx.internal.KaumeiTxManagerImplTest">❗️Manager construction</code></span>
+<p><code dir="auto">KaumeiTxManager.getInstance(JdbcConnectionProvider)</code> is the default construction
+entry point.
+Each call creates a new manager and returns it as <code dir="auto">KaumeiTxManager</code>.
+The concrete implementation is not part of the public contract.</p>
+<p>The provider is required.
+A null provider causes <code dir="auto">NullPointerException</code>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="transaction-definition">Transaction definition</h2><a class="sl-anchor-link" href="#transaction-definition"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Transaction definition”</span></a></div>
+<span><code style="color: red;" title="io.kaumei.jdbc.tx.internal.KaumeiTxManagerImplTest">❗️Transaction definition</code></span><span><code style="color: red;" title="io.kaumei.jdbc.tx.KaumeiTxDefinitionTest">❗️Annotation conversion</code></span>
+<p><code dir="auto">KaumeiTxDefinition</code> contains every non-propagation attribute:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">isolation</code></td>
+<td><code dir="auto">Isolation.DEFAULT</code></td>
+</tr>
+<tr>
+<td><code dir="auto">readOnly</code></td>
+<td><code dir="auto">ReadOnly.DEFAULT</code></td>
+</tr>
+<tr>
+<td><code dir="auto">rollbackOn</code></td>
+<td><code dir="auto">NO_THROWABLES</code></td>
+</tr>
+<tr>
+<td><code dir="auto">dontRollbackOn</code></td>
+<td><code dir="auto">NO_THROWABLES</code></td>
+</tr>
+</tbody>
+</table>
+<p><code dir="auto">KaumeiTxDefinition.DEFAULT</code> contains these four values.
+<code dir="auto">KaumeiTxDefinition.builder().build()</code> is semantically equal to <code dir="auto">DEFAULT</code>.
+<code dir="auto">KaumeiTxDefinition.from(KaumeiTx)</code> converts the annotation’s isolation,
+read-only, and rollback attributes into a programmatic definition.
+It returns the shared <code dir="auto">DEFAULT</code> instance when all definition attributes use
+their defaults; the annotation’s transaction type is handled separately.</p>
+<p><code dir="auto">NO_THROWABLES</code> matches no <code dir="auto">Throwable</code>.
+<code dir="auto">ALL_THROWABLES</code> matches every <code dir="auto">Throwable</code>, including <code dir="auto">Exception</code> and <code dir="auto">Error</code>.
+<code dir="auto">ExceptionMatcher</code> receives the thrown <code dir="auto">Throwable</code> and is the supported matcher
+type; <code dir="auto">Predicate&lt;Throwable&gt;</code> is not used.</p>
+<p>Each builder method replaces only its corresponding value and returns the same
+builder.
+<code dir="auto">build()</code> creates an immutable definition from the current values.
+Null record components and null builder arguments cause <code dir="auto">NullPointerException</code>.</p>
+<p>Isolation, read-only, and rollback evaluation are defined by
+<a href="/transaction-spec/transaction-semantics">Transaction Semantics</a>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="callback-methods">Callback methods</h2><a class="sl-anchor-link" href="#callback-methods"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Callback methods”</span></a></div>
+<span><code style="color: red;" title="io.kaumei.jdbc.tx.internal.KaumeiTxManagerImplTest">❗️Callback overloads</code></span><aside aria-label="Deliberate difference from Jakarta Transactions" class="starlight-aside starlight-aside--note"><p class="starlight-aside__title" aria-hidden="true"><svg aria-hidden="true" class="starlight-aside__icon astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 11a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm.38-3.92a1 1 0 0 0-.76 0 1 1 0 0 0-.33.21 1.15 1.15 0 0 0-.21.33 1 1 0 0 0 .21 1.09c.097.088.209.16.33.21A1 1 0 0 0 13 8a1.05 1.05 0 0 0-.29-.71 1 1 0 0 0-.33-.21ZM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16.001A8 8 0 0 1 12 20Z"/></svg>Deliberate difference from Jakarta Transactions</p><div class="starlight-aside__content"><p>Kaumei uses scoped callbacks instead of manual transaction boundaries and
+checked <code dir="auto">SystemException</code> handling.
+Programmatic and declarative transaction handling delegate to the same callback
+API.</p></div></aside>
+<p>The manager method name selects the transaction type:</p>
+<table>
+<thead>
+<tr>
+<th>Method family</th>
+<th>Transaction type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">required</code> / <code dir="auto">requiredOpt</code></td>
+<td><code dir="auto">REQUIRED</code></td>
+</tr>
+<tr>
+<td><code dir="auto">requiresNew</code> / <code dir="auto">requiresNewOpt</code></td>
+<td><code dir="auto">REQUIRES_NEW</code></td>
+</tr>
+<tr>
+<td><code dir="auto">mandatory</code> / <code dir="auto">mandatoryOpt</code></td>
+<td><code dir="auto">MANDATORY</code></td>
+</tr>
+<tr>
+<td><code dir="auto">supports</code> / <code dir="auto">supportsOpt</code></td>
+<td><code dir="auto">SUPPORTS</code></td>
+</tr>
+<tr>
+<td><code dir="auto">notSupported</code> / <code dir="auto">notSupportedOpt</code></td>
+<td><code dir="auto">NOT_SUPPORTED</code></td>
+</tr>
+<tr>
+<td><code dir="auto">never</code> / <code dir="auto">neverOpt</code></td>
+<td><code dir="auto">NEVER</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each family accepts a <code dir="auto">KaumeiTxDefinition</code> and one callback form:</p>
+<table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>Result contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">Callback</code></td>
+<td>Returns no value</td>
+</tr>
+<tr>
+<td><code dir="auto">CallbackWithResult&lt;T&gt;</code></td>
+<td>Returns a non-null value</td>
+</tr>
+<tr>
+<td><code dir="auto">CallbackWithNullableResult&lt;T&gt;</code> through an <code dir="auto">*Opt</code> method</td>
+<td>May return null</td>
+</tr>
+</tbody>
+</table>
+<p>Every invoked callback receives a non-null <code dir="auto">KaumeiTxContext</code>.
+Context selection and lifetime are defined by the
+<a href="/transaction-spec/transaction-manager">Transaction Manager</a>.</p>
+<p>Definitions and callbacks are required.
+A null argument causes <code dir="auto">NullPointerException</code>.
+Callbacks may throw checked exceptions.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="callback-results">Callback results</h3><a class="sl-anchor-link" href="#callback-results"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Callback results”</span></a></div>
+<p>A non-null callback overload validates its result after the selected transaction
+scope returns.
+When that call owns a transaction, validation occurs after transaction
+completion and therefore after commit or rollback.
+If the result is null, the manager then throws <code dir="auto">NullPointerException("result")</code>.
+The null result is not a callback failure and does not alter the transaction
+outcome.</p>
+<p>Only the <code dir="auto">*Opt</code> overloads permit a null result.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="transaction-state-operations">Transaction state operations</h2><a class="sl-anchor-link" href="#transaction-state-operations"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Transaction state operations”</span></a></div>
+<span><code style="color: red;" title="io.kaumei.jdbc.tx.internal.KaumeiTxManagerImplTest">❗️Transaction state operations</code></span>
+<p><code dir="auto">isTransactionActive()</code> reports whether the current context is active.
+It returns <code dir="auto">false</code> for a terminal <code dir="auto">FINISHED</code> context awaiting cleanup.</p>
+<p><code dir="auto">setRollbackOnly()</code> and <code dir="auto">isRollbackOnly()</code> require an active transaction.
+<code dir="auto">setRollbackOnly()</code> is idempotent.</p>
+<p><code dir="auto">registerSynchronization(...)</code> requires an active transaction whose completion
+has not started.
+<code dir="auto">commitAndContinue()</code> requires an active transaction in state <code dir="auto">RUNNING</code>.</p>
+<p>The same requirements apply to the corresponding <code dir="auto">KaumeiTxContext</code> operations.
+Invalid state causes <code dir="auto">IllegalStateException</code> and null arguments cause
+<code dir="auto">NullPointerException</code>.</p>
+<p>There is no public final <code dir="auto">commit()</code> or <code dir="auto">rollback()</code> operation.
+Intermediate completion is defined by
+<a href="/transaction-spec/transaction-semantics">Transaction Semantics</a>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="synchronisation">Synchronisation</h2><a class="sl-anchor-link" href="#synchronisation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Synchronisation”</span></a></div>
+<span><code style="color: red;" title="io.kaumei.jdbc.tx.internal.KaumeiTxManagerImplTest">❗️Synchronisation</code></span><aside aria-label="Deliberate difference from Jakarta Transactions" class="starlight-aside starlight-aside--note"><p class="starlight-aside__title" aria-hidden="true"><svg aria-hidden="true" class="starlight-aside__icon astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 11a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Zm.38-3.92a1 1 0 0 0-.76 0 1 1 0 0 0-.33.21 1.15 1.15 0 0 0-.21.33 1 1 0 0 0 .21 1.09c.097.088.209.16.33.21A1 1 0 0 0 13 8a1.05 1.05 0 0 0-.29-.71 1 1 0 0 0-.33-.21ZM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16.001A8 8 0 0 1 12 20Z"/></svg>Deliberate difference from Jakarta Transactions</p><div class="starlight-aside__content"><p>Kaumei uses typed before- and after-completion status enums.
+<code dir="auto">beforeCompletion(...)</code> runs before every completion attempt, receives the
+current completion intent, and may request rollback by returning
+<code dir="auto">ROLLING_BACK</code>.</p></div></aside>
+<p><code dir="auto">KaumeiTxSynchronization</code> provides independently optional callbacks:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/_astro/ec.q45ns.css"><script type="module" src="/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="java"><code><div class="ec-line"><div class="code"><span style="--0:#CD89E1;--1:#A626A4">default</span><span style="--0:#E6888F;--1:#383A42"> </span><span style="--0:#E5C07B;--1:#885D01">BeforeStatus</span><span style="--0:#E6888F;--1:#383A42"> </span><span style="--0:#61AFEF;--1:#3360C1">beforeCompletion</span><span style="--0:#E6888F;--1:#383A42">(</span><span style="--0:#E5C07B;--1:#885D01">BeforeStatus</span><span style="--0:#E6888F;--1:#383A42"> status) {</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#CD89E1;--1:#A626A4">return</span><span style="--1:#383A42"><span style="--0:#E6888F"> status</span><span style="--0:#ABB2BF">;</span></span></div></div><div class="ec-line"><div class="code"><span style="--0:#E6888F;--1:#383A42">}</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#CD89E1;--1:#A626A4">default</span><span style="--0:#E6888F;--1:#383A42"> </span><span style="--0:#CD89E1;--1:#A626A4">void</span><span style="--0:#E6888F;--1:#383A42"> </span><span style="--0:#61AFEF;--1:#3360C1">afterCompletion</span><span style="--0:#E6888F;--1:#383A42">(</span><span style="--0:#E5C07B;--1:#885D01">AfterStatus</span><span style="--0:#E6888F;--1:#383A42"> status) {</span></div></div><div class="ec-line"><div class="code"><span style="--0:#E6888F;--1:#383A42">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="default BeforeStatus beforeCompletion(BeforeStatus status) {    return status;}default void afterCompletion(AfterStatus status) {}"><div></div></button></div></figure></div>
+<p>An implementation may override neither, either, or both methods.
+The default <code dir="auto">beforeCompletion(...)</code> preserves the current status and the default
+<code dir="auto">afterCompletion(...)</code> has no effect.</p>
+<p>Synchronisations may request rollback and observe completion.
+They do not intercept, replace, or wrap the physical JDBC commit or rollback
+operation.</p>
+<p>Registration order defines the order of both callbacks.
+Duplicate registration is allowed and invokes the synchronization once for each
+registration.
+A registration applies to exactly one completion attempt and is removed after
+<code dir="auto">afterCompletion</code>, including after an intermediate commit.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="before-completion">Before completion</h3><a class="sl-anchor-link" href="#before-completion"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Before completion”</span></a></div>
+<p><code dir="auto">beforeCompletion(...)</code> runs once for every registered callback before every
+intermediate or final completion attempt.
+It runs with the transaction context active.</p>
+<table>
+<thead>
+<tr>
+<th>Status or result</th>
+<th>Meaning or effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">COMMITTING</code></td>
+<td>Commit is currently intended</td>
+</tr>
+<tr>
+<td><code dir="auto">ROLLING_BACK</code></td>
+<td>Rollback is already required</td>
+</tr>
+<tr>
+<td>Return <code dir="auto">COMMITTING</code></td>
+<td>Preserve the current intent; it cannot cancel rollback</td>
+</tr>
+<tr>
+<td>Return <code dir="auto">ROLLING_BACK</code></td>
+<td>Mark <code dir="auto">rollbackOnly</code> and pass <code dir="auto">ROLLING_BACK</code> to the next callback</td>
+</tr>
+</tbody>
+</table>
+<p>An existing <code dir="auto">rollbackOnly</code> state or a failure requiring rollback starts with
+<code dir="auto">ROLLING_BACK</code>.
+Calling <code dir="auto">setRollbackOnly()</code>, returning <code dir="auto">ROLLING_BACK</code>, or throwing from the
+callback makes rollback intent sticky.
+Remaining callbacks always run with the current status.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="after-completion">After completion</h3><a class="sl-anchor-link" href="#after-completion"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “After completion”</span></a></div>
+<p><code dir="auto">afterCompletion(...)</code> runs once for every registered callback after every
+completion attempt.</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code dir="auto">COMMITTED</code></td>
+<td>The physical commit succeeded</td>
+</tr>
+<tr>
+<td><code dir="auto">ROLLED_BACK</code></td>
+<td>The physical rollback succeeded</td>
+</tr>
+<tr>
+<td><code dir="auto">UNKNOWN</code></td>
+<td>Completion did not produce a reliable commit or rollback outcome</td>
+</tr>
+</tbody>
+</table>
+<p>It runs without the completed transaction context.
+A callback failure does not change the status or prevent remaining callbacks
+from running.</p>
+<p>Before- and after-completion failures follow the primary and suppressed failure
+rules defined by
+<a href="/transaction-spec/transaction-semantics">Transaction Semantics</a>.</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="failure-surface">Failure surface</h2><a class="sl-anchor-link" href="#failure-surface"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore>Section titled “Failure surface”</span></a></div>
+<p>Invalid transaction state causes <code dir="auto">IllegalStateException</code>.
+Transaction-manager failures use unchecked <code dir="auto">KaumeiTxException</code>.
+Checked callback failures are propagated with their identity preserved.</p>
+<p>The propagation-specific manager methods remain visible in failure stack traces.
+The exact stack-trace layout is not an API compatibility guarantee.</p></div><footer class="sl-flex astro-xhxjzfa7"><div class="meta sl-flex astro-xhxjzfa7"><p>Last updated: <time datetime="2026-08-10T16:06:01.000Z">Aug 10, 2026</time></p></div><div class="pagination-links print:hidden astro-jgq3vlii" dir="ltr"><a href="/transaction-spec/transaction-semantics/" rel="prev" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-jgq3vlii">Previous<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">Transaction Semantics</span></span></a><a href="/transaction-spec/declarative-transactions/" rel="next" class="astro-jgq3vlii"><svg aria-hidden="true" class="astro-jgq3vlii astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-jgq3vlii">Next<br class="astro-jgq3vlii"><span class="link-title astro-jgq3vlii">Declarative Transactions</span></span></a></div><a class="kudos sl-flex astro-xhxjzfa7" href="https://starlight.astro.build"><svg aria-hidden="true" class="astro-xhxjzfa7 astro-n5k4ipy7" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path fill-rule="evenodd" d="M15.19 6.75 12 0 8.81 6.75l-.19.38-1.68-1.88a1.2 1.2 0 1 0-1.69 1.69L7.13 8.8h-.38L0 12l6.75 3.19h.38l-1.88 1.87a1.2 1.2 0 1 0 1.69 1.69l1.68-1.88.2.38L12 24l3.19-6.75v-.38l1.69 1.88a1.2 1.2 0 1 0 1.68-1.69l-1.68-1.68.37-.2L24 12l-6.75-3.19-.38-.19 1.7-1.68a1.2 1.2 0 1 0-1.7-1.69L15.2 7.13v-.38ZM12 7.13l-.38.93a8.18 8.18 0 0 1-3.56 3.56l-.94.38.94.38a8.18 8.18 0 0 1 3.56 3.56l.38.94.38-.94a8.18 8.18 0 0 1 3.56-3.56l.94-.38-.94-.38a8.18 8.18 0 0 1-3.56-3.56L12 7.12Z"/><path d="M22.12 3.56a1.2 1.2 0 1 0-1.68-1.69l-.57.57a1.2 1.2 0 0 0 1.7 1.68l.55-.56Zm-18 .75c-.37.38-1.12.38-1.68 0l-.57-.56a1.2 1.2 0 0 1 1.7-1.69l.55.56c.57.38.57 1.13 0 1.7Zm0 15.38c-.37-.38-1.12-.38-1.68 0l-.57.56a1.2 1.2 0 1 0 1.7 1.69l.55-.57c.57-.37.57-1.12 0-1.68Zm18 .75a1.2 1.2 0 1 1-1.68 1.68l-.57-.56a1.2 1.2 0 0 1 1.7-1.69l.55.57Z"/></svg> Built with Starlight</a></footer></div></div></main></div></div></div></div></body></html>

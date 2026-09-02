@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>TransactionInterceptors.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-tx</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.tx.internal</a> &gt; <span class="el_source">TransactionInterceptors.java</span></div><h1>TransactionInterceptors.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2026 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.tx.internal;
+
+import io.kaumei.jdbc.tx.KaumeiTxDefinition;
+import io.kaumei.jdbc.tx.KaumeiTxManager;
+import org.jspecify.annotations.Nullable;
+
+import static java.util.Objects.requireNonNull;
+
+/**
+ * Transaction interceptors for {@link InterfaceWrapper}.
+ * They are primarily intended for tests that need a small transactional wrapper around an
+ * existing Java object without changing that object's implemented interfaces.
+ *
+ * &lt;p&gt;For example:
+ * &lt;pre&gt;{@code
+ * AccountApi account = InterfaceWrapper.wrap(
+ *         AccountApi.class,
+ *         new ExistingAccountService(),
+ *         TransactionInterceptors.required(txManager, KaumeiTxDefinition.DEFAULT));
+ *
+ * account.updateBalance();
+ * }&lt;/pre&gt;
+ *
+ * &lt;p&gt;The abstract API method is executed inside the configured transaction and forwarded to the
+ * matching public target method.
+ */
+public final class TransactionInterceptors {
+
+    private TransactionInterceptors() {
+    }
+
+    public static InterfaceWrapper.Interceptor required(KaumeiTxManager txManager, KaumeiTxDefinition definition) {
+<span class="fc" id="L37">        requireNonNull(txManager, &quot;txManager&quot;);</span>
+<span class="fc" id="L38">        requireNonNull(definition, &quot;definition&quot;);</span>
+<span class="fc" id="L39">        return invocation -&gt; txManager.requiredOpt(definition, context -&gt; proceed(invocation));</span>
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private static &lt;E extends Throwable&gt; @Nullable Object proceed(InterfaceWrapper.Invocation invocation) throws E {
+        try {
+<span class="fc" id="L45">            return invocation.proceed();</span>
+<span class="fc" id="L46">        } catch (Throwable e) {</span>
+<span class="fc" id="L47">            throw (E) e;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

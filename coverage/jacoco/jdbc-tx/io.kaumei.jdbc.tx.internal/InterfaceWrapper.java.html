@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>InterfaceWrapper.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Kaumei JDBC annotation processor</a> &gt; <a href="../index.html" class="el_bundle">jdbc-tx</a> &gt; <a href="index.source.html" class="el_package">io.kaumei.jdbc.tx.internal</a> &gt; <span class="el_source">InterfaceWrapper.java</span></div><h1>InterfaceWrapper.java</h1><pre class="source lang-java linenums">/*
+ * SPDX-FileCopyrightText: 2026 kaumei.io
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package io.kaumei.jdbc.tx.internal;
+
+import org.jspecify.annotations.Nullable;
+
+import java.lang.reflect.*;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.util.Objects.requireNonNull;
+
+/**
+ * Wraps a public interface around an arbitrary target object.
+ * The target does not need to implement the interface; it only needs matching public methods.
+ * This is primarily intended as small test glue for adding behaviour around calls to an existing
+ * class, including a final class.
+ *
+ * &lt;p&gt;For example:
+ * &lt;pre&gt;{@code
+ * public interface Calculator {
+ *     int add(int left, int right);
+ * }
+ *
+ * final class ExistingCalculator {
+ *     public int add(int left, int right) {
+ *         return left + right;
+ *     }
+ * }
+ *
+ * Calculator calculator = InterfaceWrapper.wrap(
+ *         Calculator.class,
+ *         new ExistingCalculator(),
+ *         invocation -&gt; {
+ *             System.out.println(invocation.method().getName());
+ *             return invocation.proceed();
+ *         });
+ *
+ * int result = calculator.add(2, 3);
+ * }&lt;/pre&gt;
+ *
+ * &lt;p&gt;Only abstract interface methods are forwarded through the interceptor.
+ * Default interface methods execute on the wrapper and are not forwarded or directly
+ * intercepted.
+ */
+public final class InterfaceWrapper {
+
+<span class="fc" id="L50">    private static final @Nullable Object[] NO_ARGUMENTS = new Object[0];</span>
+
+    private InterfaceWrapper() {
+    }
+
+    public static &lt;T&gt; T wrap(Class&lt;T&gt; api, Object target, Interceptor interceptor) {
+<span class="fc" id="L56">        requireNonNull(api, &quot;api&quot;);</span>
+<span class="fc" id="L57">        requireNonNull(target, &quot;target&quot;);</span>
+<span class="fc" id="L58">        requireNonNull(interceptor, &quot;interceptor&quot;);</span>
+
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (!api.isInterface()) {</span>
+<span class="fc" id="L61">            throw new IllegalArgumentException(&quot;API must be an interface: &quot; + api.getName());</span>
+        }
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (!Modifier.isPublic(api.getModifiers())) {</span>
+<span class="fc" id="L64">            throw new IllegalArgumentException(&quot;API must be public: &quot; + api.getName());</span>
+        }
+
+<span class="fc" id="L67">        Map&lt;Method, Method&gt; methods = resolveMethods(api, target.getClass());</span>
+<span class="fc" id="L68">        InvocationHandler handler = new InterceptorInvocationHandler(target, interceptor, methods);</span>
+<span class="fc" id="L69">        Object proxy = Proxy.newProxyInstance(api.getClassLoader(), new Class&lt;?&gt;[]{api}, handler);</span>
+<span class="fc" id="L70">        return api.cast(proxy);</span>
+    }
+
+    @FunctionalInterface
+    public interface Interceptor {
+
+        @Nullable Object intercept(Invocation invocation) throws Throwable;
+    }
+
+    public interface Invocation {
+
+        /**
+         * Returns the invoked interface method.
+         */
+        Method method();
+
+        @Nullable Object[] arguments();
+
+        /**
+         * Invokes the matching method on the target object.
+         */
+        @Nullable Object proceed() throws Throwable;
+    }
+
+    private static final class InterceptorInvocationHandler implements InvocationHandler {
+
+        private final Object target;
+        private final Interceptor interceptor;
+        private final Map&lt;Method, Method&gt; methods;
+
+        private InterceptorInvocationHandler(
+                Object target,
+                Interceptor interceptor,
+<span class="fc" id="L103">                Map&lt;Method, Method&gt; methods) {</span>
+<span class="fc" id="L104">            this.target = target;</span>
+<span class="fc" id="L105">            this.interceptor = interceptor;</span>
+<span class="fc" id="L106">            this.methods = methods;</span>
+<span class="fc" id="L107">        }</span>
+
+        @Override
+        public @Nullable Object invoke(
+                Object proxy,
+                Method method,
+                @Nullable Object @Nullable [] arguments) throws Throwable {
+<span class="fc bfc" id="L114" title="All 2 branches covered.">            @Nullable Object[] invocationArguments = arguments == null ? NO_ARGUMENTS : arguments;</span>
+
+<span class="fc bfc" id="L116" title="All 2 branches covered.">            if (method.getDeclaringClass() == Object.class) {</span>
+<span class="fc" id="L117">                return invokeObjectMethod(proxy, method, invocationArguments);</span>
+            }
+<span class="fc bfc" id="L119" title="All 2 branches covered.">            if (method.isDefault()) {</span>
+<span class="fc" id="L120">                return InvocationHandler.invokeDefault(proxy, method, invocationArguments);</span>
+            }
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">            if (!Modifier.isAbstract(method.getModifiers())) {</span>
+<span class="nc" id="L123">                throw new UnsupportedOperationException(method.toString());</span>
+            }
+
+<span class="fc" id="L126">            Method targetMethod = methods.get(method);</span>
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">            if (targetMethod == null) {</span>
+<span class="nc" id="L128">                throw new IllegalStateException(&quot;No resolved target method for &quot; + method);</span>
+            }
+<span class="fc" id="L130">            return interceptor.intercept(</span>
+                    new MethodInvocation(method, target, targetMethod, invocationArguments));
+        }
+
+        private Object invokeObjectMethod(Object proxy, Method method, @Nullable Object[] arguments) {
+<span class="pc bpc" id="L135" title="1 of 4 branches missed.">            return switch (method.getName()) {</span>
+<span class="fc" id="L136">                case &quot;toString&quot; -&gt; &quot;InterfaceWrapper[&quot; + target + &quot;]&quot;;</span>
+<span class="fc" id="L137">                case &quot;hashCode&quot; -&gt; System.identityHashCode(proxy);</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">                case &quot;equals&quot; -&gt; proxy == arguments[0];</span>
+<span class="nc" id="L139">                default -&gt; throw new UnsupportedOperationException(method.toString());</span>
+            };
+        }
+    }
+
+    private static final class MethodInvocation implements Invocation {
+
+        private final Object target;
+        private final Method interfaceMethod;
+        private final Method targetMethod;
+        private final @Nullable Object[] arguments;
+
+        private MethodInvocation(
+                Method interfaceMethod,
+                Object target,
+                Method targetMethod,
+<span class="fc" id="L155">                @Nullable Object[] arguments) {</span>
+<span class="fc" id="L156">            this.interfaceMethod = interfaceMethod;</span>
+<span class="fc" id="L157">            this.target = target;</span>
+<span class="fc" id="L158">            this.targetMethod = targetMethod;</span>
+<span class="fc" id="L159">            this.arguments = arguments;</span>
+<span class="fc" id="L160">        }</span>
+
+        @Override
+        public Method method() {
+<span class="fc" id="L164">            return interfaceMethod;</span>
+        }
+
+        @Override
+        public @Nullable Object[] arguments() {
+<span class="fc" id="L169">            return arguments;</span>
+        }
+
+        @Override
+        public @Nullable Object proceed() throws Throwable {
+            try {
+<span class="fc" id="L175">                return targetMethod.invoke(target, arguments);</span>
+<span class="fc" id="L176">            } catch (InvocationTargetException e) {</span>
+<span class="fc" id="L177">                throw e.getTargetException();</span>
+            }
+        }
+    }
+
+    private static Map&lt;Method, Method&gt; resolveMethods(Class&lt;?&gt; api, Class&lt;?&gt; targetType) {
+<span class="fc" id="L183">        Map&lt;Method, Method&gt; methods = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">        for (Method interfaceMethod : api.getMethods()) {</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">            if (!Modifier.isAbstract(interfaceMethod.getModifiers())) {</span>
+<span class="fc" id="L186">                continue;</span>
+            }
+
+            Method targetMethod;
+            try {
+<span class="fc" id="L191">                targetMethod = targetType.getMethod(</span>
+<span class="fc" id="L192">                        interfaceMethod.getName(),</span>
+<span class="fc" id="L193">                        interfaceMethod.getParameterTypes());</span>
+<span class="fc" id="L194">            } catch (NoSuchMethodException e) {</span>
+<span class="fc" id="L195">                throw new IllegalArgumentException(</span>
+<span class="fc" id="L196">                        &quot;No matching public method on &quot; + targetType.getName()</span>
+<span class="fc" id="L197">                                + &quot; for &quot; + methodSignature(interfaceMethod),</span>
+                        e);
+<span class="fc" id="L199">            }</span>
+
+<span class="fc bfc" id="L201" title="All 2 branches covered.">            if (!interfaceMethod.getReturnType().isAssignableFrom(targetMethod.getReturnType())) {</span>
+<span class="fc" id="L202">                throw new IllegalArgumentException(</span>
+<span class="fc" id="L203">                        &quot;Incompatible return type for &quot; + methodSignature(interfaceMethod));</span>
+            }
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">            if (!targetMethod.trySetAccessible()) {</span>
+<span class="nc" id="L206">                throw new IllegalArgumentException(</span>
+                        &quot;Target method is not accessible: &quot; + targetMethod);
+            }
+<span class="fc" id="L209">            methods.put(interfaceMethod, targetMethod);</span>
+        }
+<span class="fc" id="L211">        return Map.copyOf(methods);</span>
+    }
+
+    private static String methodSignature(Method method) {
+<span class="fc" id="L215">        StringBuilder signature = new StringBuilder();</span>
+<span class="fc" id="L216">        signature.append(method.getName());</span>
+<span class="fc" id="L217">        signature.append('(');</span>
+<span class="fc" id="L218">        Class&lt;?&gt;[] parameterTypes = method.getParameterTypes();</span>
+<span class="fc bfc" id="L219" title="All 2 branches covered.">        for (int i = 0; i &lt; parameterTypes.length; i++) {</span>
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">            if (i &gt; 0) {</span>
+<span class="nc" id="L221">                signature.append(&quot;, &quot;);</span>
+            }
+<span class="fc" id="L223">            signature.append(parameterTypes[i].getSimpleName());</span>
+        }
+<span class="fc" id="L225">        signature.append(')');</span>
+<span class="fc" id="L226">        return signature.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

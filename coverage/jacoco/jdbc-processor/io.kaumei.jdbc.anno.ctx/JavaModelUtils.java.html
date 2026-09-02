@@ -47,9 +47,9 @@ public final class JavaModelUtils {
 <span class="nc" id="L47">        throw new ProcessorException(&quot;Unknown element type: &quot; + element.getClass().getName()); // sanity-check</span>
     }
 
-    public static boolean isVisible(Element element) {
+    private static boolean isVisible(Element element) {
 <span class="fc" id="L51">        var modifiers = element.getModifiers();</span>
-<span class="fc bfc" id="L52" title="All 4 branches covered.">        return !modifiers.contains(Modifier.PRIVATE) &amp;&amp; !modifiers.contains(Modifier.PROTECTED);</span>
+<span class="pc bpc" id="L52" title="2 of 4 branches missed.">        return !modifiers.contains(Modifier.PRIVATE) &amp;&amp; !modifiers.contains(Modifier.PROTECTED);</span>
     }
 
     public static boolean isStatic(Element element) {
@@ -67,16 +67,15 @@ public final class JavaModelUtils {
 <span class="fc" id="L67">        return Objects.requireNonNull(componentOpt(mirror), &quot;TypeMirror has no component.&quot;);</span>
     }
 
-    @Nullable
-    public static TypeMirror componentOpt(TypeMirror mirror) {
-<span class="fc bfc" id="L72" title="All 2 branches covered.">        if (mirror instanceof DeclaredType declared) {</span>
-<span class="pc bpc" id="L73" title="1 of 2 branches missed.">            if (declared.getTypeArguments().size() == 1) {</span>
-<span class="fc" id="L74">                return declared.getTypeArguments().get(0);</span>
+    public static @Nullable TypeMirror componentOpt(TypeMirror mirror) {
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (mirror instanceof DeclaredType declared) {</span>
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">            if (declared.getTypeArguments().size() == 1) {</span>
+<span class="fc" id="L73">                return declared.getTypeArguments().get(0);</span>
             }
-<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        } else if (mirror instanceof ArrayType arrayType) {</span>
-<span class="fc" id="L77">            return arrayType.getComponentType();</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">        } else if (mirror instanceof ArrayType arrayType) {</span>
+<span class="fc" id="L76">            return arrayType.getComponentType();</span>
         }
-<span class="nc" id="L79">        return null;</span>
+<span class="nc" id="L78">        return null;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

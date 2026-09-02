@@ -5,7 +5,6 @@
 package io.kaumei.jdbc.anno.gen;
 
 import com.palantir.javapoet.*;
-import io.kaumei.jdbc.CodeGenerationException;
 import io.kaumei.jdbc.anno.ProcessorEnvironment;
 import io.kaumei.jdbc.anno.ProcessorSteps;
 import io.kaumei.jdbc.anno.ctx.Context;
@@ -14,10 +13,11 @@ import io.kaumei.jdbc.anno.model.SourceMethodParameter;
 import io.kaumei.jdbc.anno.msg.JdbcMsg;
 import io.kaumei.jdbc.anno.msg.Msg;
 import io.kaumei.jdbc.anno.store.SourceDV;
-import io.kaumei.jdbc.anno.utils.SqlTokenizer;
+import io.kaumei.jdbc.anno.utils.ParsedSql;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import java.util.ArrayList;
@@ -25,7 +25,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 import static io.kaumei.jdbc.anno.ctx.JavaModelUtils.isTopLevel;
-import static io.kaumei.jdbc.anno.utils.PrintStackTrace.appendStackTrace;
 import static java.util.Objects.requireNonNull;
 
 public class GenerateService implements ProcessorSteps {
@@ -33,98 +32,102 @@ public class GenerateService implements ProcessorSteps {
     // ----- services
     final Context ctx;
 
-<span class="fc" id="L36">    public GenerateService(Context ctx) {</span>
-<span class="fc" id="L37">        this.ctx = requireNonNull(ctx);</span>
-<span class="fc" id="L38">    }</span>
+<span class="fc" id="L35">    public GenerateService(Context ctx) {</span>
+<span class="fc" id="L36">        this.ctx = requireNonNull(ctx);</span>
+<span class="fc" id="L37">    }</span>
 
     // ------------------------------------------------------------------------
 
     @Override
     public void process(ProcessorEnvironment roundEnv) {
-<span class="fc bfc" id="L44" title="All 2 branches covered.">        for (var entry : roundEnv.jdbcInterfaces()) {</span>
-<span class="fc bfc" id="L45" title="All 2 branches covered.">            if (isTopLevel(entry)) {</span>
-<span class="fc" id="L46">                this.ctx.logger.acceptWithDebugFlag(entry, this::generateImplementation);</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        for (var entry : roundEnv.jdbcInterfaces()) {</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">            if (isTopLevel(entry)) {</span>
+<span class="fc" id="L45">                this.ctx.logger.acceptWithDebugFlag(entry, this::generateImplementation);</span>
             } else {
                 // batch interfaces are processed separately
-<span class="fc" id="L49">                this.ctx.logger.debug(&quot;Skip interface because it is not top level:&quot;, entry);</span>
+<span class="fc" id="L48">                this.ctx.logger.debug(&quot;Skip interface because it is not top level:&quot;, entry);</span>
             }
-<span class="fc" id="L51">        }</span>
-<span class="fc" id="L52">    }</span>
+<span class="fc" id="L50">        }</span>
+<span class="fc" id="L51">    }</span>
 
     // ------------------------------------------------------------------------
 
     private void generateImplementation(TypeElement iface) {
-<span class="fc" id="L57">        this.ctx.logger.info(&quot;Process interface&quot;, iface);</span>
-<span class="fc" id="L58">        var implBuilder = this.create(iface);</span>
+<span class="fc" id="L56">        this.ctx.logger.info(&quot;Process interface&quot;, iface);</span>
+<span class="fc" id="L57">        var implBuilder = this.create(iface);</span>
         // ----- process methods
-<span class="fc bfc" id="L60" title="All 2 branches covered.">        for (var child : iface.getEnclosedElements()) {</span>
-<span class="fc bfc" id="L61" title="All 2 branches covered.">            if (!child.getModifiers().contains(Modifier.STATIC)</span>
-<span class="fc bfc" id="L62" title="All 2 branches covered.">                    &amp;&amp; !child.getModifiers().contains(Modifier.DEFAULT)</span>
-<span class="pc bpc" id="L63" title="2 of 4 branches missed.">                    &amp;&amp; child.getKind() == ElementKind.METHOD</span>
-<span class="fc" id="L64">                    &amp;&amp; child instanceof ExecutableElement method) {</span>
-<span class="fc" id="L65">                generateMethod(implBuilder, method);</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        for (var child : this.ctx.getAllMembers(iface)) {</span>
+<span class="fc" id="L60">            var modifiers = child.getModifiers();</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">            if (child.getKind() == ElementKind.METHOD</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">                    &amp;&amp; modifiers.contains(Modifier.ABSTRACT)</span>
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">                    &amp;&amp; !modifiers.contains(Modifier.PRIVATE)</span>
+<span class="pc bpc" id="L64" title="2 of 4 branches missed.">                    &amp;&amp; !modifiers.contains(Modifier.STATIC)</span>
+<span class="fc" id="L65">                    &amp;&amp; child instanceof ExecutableElement method) {</span>
+<span class="fc" id="L66">                generateMethod(implBuilder, method);</span>
             }
-<span class="fc" id="L67">        }</span>
+<span class="fc" id="L68">        }</span>
         // ----- write to disk
-<span class="fc" id="L69">        this.ctx.filer.writeJava(iface, implBuilder.packageName(), implBuilder.build());</span>
-<span class="fc" id="L70">    }</span>
+<span class="fc" id="L70">        this.ctx.filer.writeJava(iface, implBuilder.packageName(), implBuilder.build());</span>
+<span class="fc" id="L71">    }</span>
 
     void generateMethod(KaumeiClassBuilder implBuilder, ExecutableElement method0) {
-<span class="fc" id="L73">        this.ctx.logger.acceptWithDebugFlag(method0, (method) -&gt; {</span>
+<span class="fc" id="L74">        this.ctx.logger.acceptWithDebugFlag(method0, (method) -&gt; {</span>
             try {
-<span class="fc" id="L75">                implBuilder.addMethod(generator(implBuilder, method));</span>
-<span class="nc" id="L76">            } catch (Exception e) {</span>
-                // sanity-check:on
-<span class="nc" id="L78">                this.ctx.logger.warn(&quot;Catch exception.&quot;, e);</span>
-<span class="nc" id="L79">                var sb = new StringBuilder();</span>
-<span class="nc" id="L80">                sb.append(&quot;Annotation processing caught internal exception:\n&quot;);</span>
-<span class="nc" id="L81">                appendStackTrace(sb, e);</span>
-<span class="nc" id="L82">                implBuilder.addMethod(MethodSpec.overriding(method)</span>
-<span class="nc" id="L83">                        .addStatement(&quot;throw new $T($S)&quot;, CodeGenerationException.class, sb.toString())</span>
-<span class="nc" id="L84">                        .build());</span>
-                // sanity-check:off
-<span class="fc" id="L86">            }</span>
-<span class="fc" id="L87">        });</span>
-<span class="fc" id="L88">    }</span>
+<span class="fc" id="L76">                implBuilder.addMethod(generator(implBuilder, method));</span>
+<span class="fc" id="L77">            } catch (Exception e) {</span>
+<span class="fc" id="L78">                this.ctx.logger.warn(&quot;Catch exception.&quot;, e);</span>
+<span class="fc" id="L79">                implBuilder.addMethodThrows(method, e); // sanity-check</span>
+<span class="fc" id="L80">            }</span>
+<span class="fc" id="L81">        });</span>
+<span class="fc" id="L82">    }</span>
 
     private MethodSpec generator(KaumeiClassBuilder implBuilder, ExecutableElement method) {
-<span class="fc" id="L91">        this.ctx.logger.debug(&quot;generateMethod&quot;, method);</span>
-<span class="fc" id="L92">        var sourceMethod = ctx.sourceMethodService.get(method);</span>
+<span class="fc" id="L85">        this.ctx.logger.debug(&quot;generateMethod&quot;, method);</span>
+<span class="fc" id="L86">        var sourceMethod = ctx.sourceMethodService.getOpt(method);</span>
 
-<span class="fc bfc" id="L94" title="All 2 branches covered.">        if (sourceMethod.hasMessages()) {</span>
-<span class="fc" id="L95">            return new GenerateJdbcThrowCodeGeneration(this.ctx, method).generateMethod(sourceMethod.messages(), invalidMethodHeader(sourceMethod));</span>
-<span class="fc bfc" id="L96" title="All 2 branches covered.">        } else if (sourceMethod.entryPoint().selectOpt() != null) {</span>
-<span class="fc" id="L97">            return new GenerateJdbcSelect(this.ctx, sourceMethod).generateMethod();</span>
-<span class="fc bfc" id="L98" title="All 2 branches covered.">        } else if (sourceMethod.entryPoint().updateOpt() != null) {</span>
-<span class="fc" id="L99">            return new GenerateJdbcUpdate(this.ctx, sourceMethod).generateMethod();</span>
-<span class="fc bfc" id="L100" title="All 2 branches covered.">        } else if (sourceMethod.entryPoint().nativeJdbcOpt() != null) {</span>
-<span class="fc" id="L101">            return new GenerateJdbcNative(this.ctx, sourceMethod).generateMethod();</span>
-<span class="pc bpc" id="L102" title="1 of 2 branches missed.">        } else if (sourceMethod.entryPoint().batchUpdateOpt() != null) {</span>
-<span class="fc" id="L103">            return new GenerateJdbcBatchUpdate(this.ctx, implBuilder, sourceMethod).generateMethod();</span>
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        if (sourceMethod == null) {</span>
+<span class="fc" id="L89">            return new GenerateJdbcThrowCodeGeneration(this.ctx, method)</span>
+<span class="fc" id="L90">                    .generateMethod(</span>
+<span class="fc" id="L91">                            JdbcMsg.inheritedJdbcMethodNotSupported(method),</span>
+                            &quot;JDBC interface inheritance unsupported&quot;);
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        } else if (sourceMethod.hasMessages()) {</span>
+<span class="fc" id="L94">            return new GenerateJdbcThrowCodeGeneration(this.ctx, method)</span>
+<span class="fc" id="L95">                    .generateMethod(sourceMethod.messages(), invalidMethodHeader(sourceMethod));</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        } else if (sourceMethod instanceof SourceMethod.Select selectMethod) {</span>
+<span class="fc" id="L97">            return new GenerateJdbcSelect(this.ctx, selectMethod).generateMethod();</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        } else if (sourceMethod instanceof SourceMethod.Update updateMethod) {</span>
+<span class="fc" id="L99">            return new GenerateJdbcUpdate(this.ctx, updateMethod).generateMethod();</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        } else if (sourceMethod instanceof SourceMethod.Native nativeMethod) {</span>
+<span class="fc" id="L101">            return new GenerateJdbcNative(this.ctx, nativeMethod).generateMethod();</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        } else if (sourceMethod instanceof SourceMethod.BatchUpdate batchUpdate) {</span>
+<span class="fc" id="L103">            return new GenerateJdbcBatchUpdate(this.ctx, implBuilder, batchUpdate).generateMethod();</span>
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">        } else if (sourceMethod instanceof SourceMethod.CallMethod callMethod) {</span>
+<span class="fc" id="L105">            return new GenerateJdbcCall(this.ctx, callMethod).generateMethod();</span>
         } else {
-<span class="nc" id="L105">            throw new IllegalStateException(&quot;Illegal state: &quot; + sourceMethod.hasMessages() + &quot; and &quot; + sourceMethod.entryPoint()); // sanity-check</span>
+<span class="nc" id="L107">            throw new IllegalStateException(&quot;Illegal state: &quot; + sourceMethod.hasMessages() + &quot; and &quot; + sourceMethod); // sanity-check</span>
         }
     }
 
     private static String invalidMethodHeader(SourceMethod sourceMethod) {
-<span class="fc" id="L110">        var entryPoint = sourceMethod.entryPoint();</span>
-<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (entryPoint.selectOpt() != null) {</span>
-<span class="fc" id="L112">            return &quot;@JdbcSelect method invalid&quot;;</span>
-<span class="fc bfc" id="L113" title="All 2 branches covered.">        } else if (entryPoint.updateOpt() != null) {</span>
-<span class="fc" id="L114">            return &quot;@JdbcUpdate method invalid&quot;;</span>
-<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        } else if (entryPoint.nativeJdbcOpt() != null) {</span>
-<span class="nc" id="L116">            return &quot;@JdbcNative method invalid&quot;;</span>
-<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        } else if (entryPoint.batchUpdateOpt() != null) {</span>
-<span class="nc" id="L118">            return &quot;@JdbcBatchUpdate method invalid&quot;;</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">        if (sourceMethod instanceof SourceMethod.Select) {</span>
+<span class="fc" id="L113">            return &quot;@JdbcSelect method invalid&quot;;</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">        } else if (sourceMethod instanceof SourceMethod.Update) {</span>
+<span class="fc" id="L115">            return &quot;@JdbcUpdate method invalid&quot;;</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">        } else if (sourceMethod instanceof SourceMethod.Native) {</span>
+<span class="nc" id="L117">            return &quot;@JdbcNative method invalid&quot;;</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        } else if (sourceMethod instanceof SourceMethod.BatchUpdate) {</span>
+<span class="nc" id="L119">            return &quot;@JdbcBatchUpdate method invalid&quot;;</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        } else if (sourceMethod instanceof SourceMethod.CallMethod) {</span>
+<span class="fc" id="L121">            return &quot;@JdbcCall method invalid&quot;;</span>
         }
-<span class="fc" id="L120">        return &quot;JDBC method invalid&quot;;</span>
+<span class="fc" id="L123">        return &quot;JDBC method invalid&quot;;</span>
     }
 
     // ------------------------------------------------------------------------
 
     public KaumeiClassBuilder create(TypeElement iface) {
-<span class="fc" id="L126">        var packageName = this.ctx.getPackageOf(iface).getQualifiedName().toString();</span>
-<span class="fc" id="L127">        return new KaumeiClassBuilder(this.ctx, packageName, iface);</span>
+<span class="fc" id="L129">        var packageName = this.ctx.getPackageOf(iface).getQualifiedName().toString();</span>
+<span class="fc" id="L130">        return new KaumeiClassBuilder(this.ctx, packageName, iface);</span>
     }
 
     // ------------------------------------------------------------------------
@@ -132,211 +135,221 @@ public class GenerateService implements ProcessorSteps {
     /**
      * @return the AnnotationSpec if the mirror, return null if it was a Kaumei internal annotation
      */
-    @Nullable
-    AnnotationSpec annotationSpec(AnnotationMirror mirror) {
-<span class="fc bfc" id="L137" title="All 2 branches covered.">        return this.ctx.hasKaumeiPkg(mirror.getAnnotationType().asElement())</span>
-<span class="fc" id="L138">                ? null</span>
-<span class="fc" id="L139">                : AnnotationSpec.get(mirror);</span>
+    @Nullable AnnotationSpec annotationSpec(AnnotationMirror mirror) {
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        return this.ctx.hasKaumeiPkg(mirror.getAnnotationType().asElement())</span>
+<span class="fc" id="L140">                ? null</span>
+<span class="fc" id="L141">                : AnnotationSpec.get(mirror);</span>
     }
 
     private TypeName typeNameWithAnnotations(TypeMirror typeMirror) {
-<span class="fc" id="L143">        var annotationMirrors = typeMirror.getAnnotationMirrors();</span>
-<span class="fc bfc" id="L144" title="All 2 branches covered.">        if (annotationMirrors.isEmpty()) {</span>
-<span class="fc" id="L145">            return TypeName.get(typeMirror);</span>
+<span class="fc" id="L145">        var annotationMirrors = typeMirror.getAnnotationMirrors();</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">        if (annotationMirrors.isEmpty()) {</span>
+<span class="fc" id="L147">            return TypeName.get(typeMirror);</span>
         }
-<span class="fc" id="L147">        List&lt;AnnotationSpec&gt; specs = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L148" title="All 2 branches covered.">        for (AnnotationMirror annoMirror : annotationMirrors) {</span>
-<span class="fc" id="L149">            var spec = this.annotationSpec(annoMirror);</span>
-<span class="pc bpc" id="L150" title="1 of 2 branches missed.">            if (spec != null) {</span>
-<span class="fc" id="L151">                specs.add(spec);</span>
+<span class="fc" id="L149">        List&lt;AnnotationSpec&gt; specs = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">        for (AnnotationMirror annoMirror : annotationMirrors) {</span>
+<span class="fc" id="L151">            var spec = this.annotationSpec(annoMirror);</span>
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">            if (spec != null) {</span>
+<span class="fc" id="L153">                specs.add(spec);</span>
             }
-<span class="fc" id="L153">        }</span>
-<span class="pc bpc" id="L154" title="1 of 2 branches missed.">        return specs.isEmpty() ? TypeName.get(typeMirror) : TypeName.get(typeMirror).annotated(specs);</span>
+<span class="fc" id="L155">        }</span>
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        return specs.isEmpty() ? TypeName.get(typeMirror) : TypeName.get(typeMirror).annotated(specs);</span>
     }
 
     // ------------------------------------------------------------------------
 
     MethodSpec.Builder createMethodBuilder(ExecutableElement method, TargetMethod target) {
-<span class="fc" id="L160">        var methodName = method.getSimpleName().toString();</span>
-<span class="fc" id="L161">        var methodBuilder = MethodSpec.methodBuilder(methodName);</span>
+<span class="fc" id="L162">        var methodName = method.getSimpleName().toString();</span>
+<span class="fc" id="L163">        var methodBuilder = MethodSpec.methodBuilder(methodName);</span>
 
         // ----- method annotations
-<span class="fc" id="L164">        methodBuilder.addAnnotation(Override.class);</span>
-<span class="fc bfc" id="L165" title="All 2 branches covered.">        for (var mirror : method.getAnnotationMirrors()) {</span>
-<span class="fc bfc" id="L166" title="All 2 branches covered.">            if (!this.ctx.hasKaumeiPkg(mirror.getAnnotationType().asElement())) {</span>
-<span class="fc" id="L167">                methodBuilder.addAnnotation(AnnotationSpec.get(mirror));</span>
+<span class="fc" id="L166">        methodBuilder.addAnnotation(Override.class);</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">        for (var mirror : method.getAnnotationMirrors()) {</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">            if (!this.ctx.hasKaumeiPkg(mirror.getAnnotationType().asElement())) {</span>
+<span class="fc" id="L169">                methodBuilder.addAnnotation(AnnotationSpec.get(mirror));</span>
             }
-<span class="fc" id="L169">        }</span>
+<span class="fc" id="L171">        }</span>
 
         // ----- modifiers
-<span class="fc" id="L172">        var modifiers = new LinkedHashSet&lt;&gt;(method.getModifiers());</span>
-<span class="fc" id="L173">        modifiers.remove(Modifier.ABSTRACT);</span>
-<span class="fc" id="L174">        modifiers.remove(Modifier.DEFAULT);</span>
-<span class="fc" id="L175">        methodBuilder.addModifiers(modifiers);</span>
+<span class="fc" id="L174">        var modifiers = new LinkedHashSet&lt;&gt;(method.getModifiers());</span>
+<span class="fc" id="L175">        modifiers.remove(Modifier.ABSTRACT);</span>
+<span class="fc" id="L176">        modifiers.remove(Modifier.DEFAULT);</span>
+<span class="fc" id="L177">        methodBuilder.addModifiers(modifiers);</span>
 
         // ----- type parameter
-<span class="pc bpc" id="L178" title="1 of 2 branches missed.">        for (TypeParameterElement typeParameterElement : method.getTypeParameters()) {</span>
-<span class="nc" id="L179">            TypeVariable var = (TypeVariable) typeParameterElement.asType();</span>
-<span class="nc" id="L180">            methodBuilder.addTypeVariable(TypeVariableName.get(var));</span>
-<span class="nc" id="L181">        }</span>
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">        for (TypeParameterElement typeParameterElement : method.getTypeParameters()) {</span>
+<span class="nc" id="L181">            TypeVariable var = (TypeVariable) typeParameterElement.asType();</span>
+<span class="nc" id="L182">            methodBuilder.addTypeVariable(TypeVariableName.get(var));</span>
+<span class="nc" id="L183">        }</span>
 
         // ----- return type with annotations
-<span class="fc" id="L184">        methodBuilder.returns(this.typeNameWithAnnotations(method.getReturnType()));</span>
+<span class="fc" id="L186">        methodBuilder.returns(this.typeNameWithAnnotations(method.getReturnType()));</span>
 
         // ----- parameter
-<span class="fc bfc" id="L187" title="All 2 branches covered.">        for (VariableElement param : method.getParameters()) {</span>
-<span class="fc" id="L188">            var type = this.typeNameWithAnnotations(param.asType());</span>
-<span class="fc" id="L189">            var name = target.paramName(param.getSimpleName().toString());</span>
-<span class="fc" id="L190">            var paramBuilder = ParameterSpec.builder(type, name);</span>
-<span class="fc" id="L191">            paramBuilder.addModifiers(param.getModifiers());</span>
-<span class="fc bfc" id="L192" title="All 2 branches covered.">            for (AnnotationMirror mirror : param.getAnnotationMirrors()) {</span>
-<span class="fc" id="L193">                var spec = this.annotationSpec(mirror);</span>
-<span class="pc bpc" id="L194" title="1 of 2 branches missed.">                if (spec != null) {</span>
-<span class="nc" id="L195">                    paramBuilder.addAnnotation(AnnotationSpec.get(mirror));</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">        for (VariableElement param : method.getParameters()) {</span>
+<span class="fc" id="L190">            var type = this.typeNameWithAnnotations(param.asType());</span>
+<span class="fc" id="L191">            var name = target.paramName(param.getSimpleName().toString());</span>
+<span class="fc" id="L192">            var paramBuilder = ParameterSpec.builder(type, name);</span>
+<span class="fc" id="L193">            paramBuilder.addModifiers(param.getModifiers());</span>
+<span class="fc bfc" id="L194" title="All 2 branches covered.">            for (AnnotationMirror mirror : param.getAnnotationMirrors()) {</span>
+<span class="fc" id="L195">                var spec = this.annotationSpec(mirror);</span>
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">                if (spec != null) {</span>
+<span class="nc" id="L197">                    paramBuilder.addAnnotation(AnnotationSpec.get(mirror));</span>
                 }
-<span class="fc" id="L197">            }</span>
-<span class="fc" id="L198">            methodBuilder.addParameter(paramBuilder.build());</span>
-<span class="fc" id="L199">        }</span>
-<span class="fc" id="L200">        methodBuilder.varargs(method.isVarArgs());</span>
+<span class="fc" id="L199">            }</span>
+<span class="fc" id="L200">            methodBuilder.addParameter(paramBuilder.build());</span>
+<span class="fc" id="L201">        }</span>
+<span class="fc" id="L202">        methodBuilder.varargs(method.isVarArgs());</span>
 
         // ----- throws
-<span class="fc bfc" id="L203" title="All 2 branches covered.">        for (TypeMirror thrownType : method.getThrownTypes()) {</span>
-<span class="fc" id="L204">            methodBuilder.addException(TypeName.get(thrownType));</span>
-<span class="fc" id="L205">        }</span>
+<span class="fc bfc" id="L205" title="All 2 branches covered.">        for (TypeMirror thrownType : method.getThrownTypes()) {</span>
+<span class="fc" id="L206">            methodBuilder.addException(TypeName.get(thrownType));</span>
+<span class="fc" id="L207">        }</span>
 
-<span class="fc" id="L207">        return methodBuilder;</span>
+<span class="fc" id="L209">        return methodBuilder;</span>
     }
 
     // ------------------------------------------------------------------------
 
     public CodeBlock buildSqlVariable(SourceMethod source, TargetMethod target, String variableName) {
-<span class="fc" id="L213">        source.messages().requireEmpty();</span>
-<span class="fc" id="L214">        var code = CodeBlock.builder();</span>
-<span class="fc" id="L215">        var maxCollectionPlaceholders = this.ctx.kaumeiConfig.maxCollectionPlaceholders();</span>
-<span class="fc" id="L216">        var maxTotalPlaceholders = this.ctx.kaumeiConfig.maxTotalPlaceholders();</span>
-<span class="fc" id="L217">        var parameter = source.parameter();</span>
+<span class="fc" id="L215">        source.messages().requireEmpty();</span>
+<span class="fc" id="L216">        var code = CodeBlock.builder();</span>
+<span class="fc" id="L217">        var maxCollectionPlaceholders = this.ctx.kaumeiConfig.maxCollectionPlaceholders();</span>
+<span class="fc" id="L218">        var maxTotalPlaceholders = this.ctx.kaumeiConfig.maxTotalPlaceholders();</span>
+<span class="fc" id="L219">        var parameter = source.parameter();</span>
 
-<span class="fc" id="L219">        code.addStatement(&quot;var plCount = 0&quot;);</span>
-<span class="fc" id="L220">        code.addStatement(&quot;var sqlSb = new $T()&quot;, StringBuilder.class);</span>
+<span class="fc" id="L221">        code.addStatement(&quot;var plCount = 0&quot;);</span>
+<span class="fc" id="L222">        code.addStatement(&quot;var sqlSb = new $T()&quot;, StringBuilder.class);</span>
 
-<span class="fc bfc" id="L222" title="All 2 branches covered.">        for (var token : parameter.tokens()) {</span>
-<span class="fc bfc" id="L223" title="All 2 branches covered.">            if (token instanceof SqlTokenizer.TextToken tt) {</span>
-<span class="fc" id="L224">                code.addStatement(&quot;sqlSb.append($S)&quot;, tt.sql());</span>
-<span class="fc bfc" id="L225" title="All 2 branches covered.">            } else if (token instanceof SqlTokenizer.SingleParameter sqlParam) {</span>
-<span class="fc" id="L226">                code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;?&quot;);</span>
-<span class="fc" id="L227">                var length = CodeBlock.of(&quot;1&quot;);</span>
-<span class="fc" id="L228">                code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
-<span class="fc bfc" id="L229" title="All 2 branches covered.">            } else if (token instanceof SqlTokenizer.AllValues sqlParam) {</span>
-<span class="fc" id="L230">                var name = sqlParam.root();</span>
-<span class="fc" id="L231">                var param = parameter.getValues(name);</span>
-<span class="fc bfc" id="L232" title="All 2 branches covered.">                if (param instanceof SourceMethodParameter.ParamArray pa) {</span>
-<span class="fc" id="L233">                    var length = CodeBlock.of(&quot;$L.length&quot;, KaumeiLib.requireNonNull(target.paramCodeBlock(name)));</span>
-<span class="fc" id="L234">                    code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
-<span class="fc" id="L235">                    code.addStatement(&quot;sqlSb.append($L)&quot;, KaumeiLib.marks(length, maxCollectionPlaceholders, name));</span>
-<span class="fc bfc" id="L236" title="All 2 branches covered.">                } else if (param instanceof SourceMethodParameter.ParamList pl) {</span>
-<span class="fc" id="L237">                    var length = CodeBlock.of(&quot;$L.size()&quot;, KaumeiLib.requireNonNull(target.paramCodeBlock(name)));</span>
-<span class="fc" id="L238">                    code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
-<span class="fc" id="L239">                    code.addStatement(&quot;sqlSb.append($L)&quot;, KaumeiLib.marks(length, maxCollectionPlaceholders, name));</span>
-<span class="pc bpc" id="L240" title="1 of 2 branches missed.">                } else if (param instanceof SourceMethodParameter.ParamComposite pc) {</span>
-<span class="fc bfc" id="L241" title="All 2 branches covered.">                    for (int i = 0; i &lt; pc.searchRequests().length; i++) {</span>
-<span class="fc bfc" id="L242" title="All 2 branches covered.">                        if (i &gt; 0) {</span>
-<span class="fc" id="L243">                            code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;,&quot;);</span>
+<span class="fc bfc" id="L224" title="All 2 branches covered.">        for (var token : parameter.parsedSql()) {</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">            if (token instanceof ParsedSql.TextToken tt) {</span>
+<span class="fc" id="L226">                code.addStatement(&quot;sqlSb.append($S)&quot;, tt.sql());</span>
+<span class="fc bfc" id="L227" title="All 2 branches covered.">            } else if (token instanceof ParsedSql.SingleParameter sqlParam) {</span>
+<span class="fc" id="L228">                code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;?&quot;);</span>
+<span class="fc" id="L229">                var length = CodeBlock.of(&quot;1&quot;);</span>
+<span class="fc" id="L230">                code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">            } else if (token instanceof ParsedSql.AllValues sqlParam) {</span>
+<span class="fc" id="L232">                var name = sqlParam.root();</span>
+<span class="fc" id="L233">                var param = parameter.getValues(name);</span>
+<span class="fc bfc" id="L234" title="All 2 branches covered.">                if (param instanceof SourceMethodParameter.ParamArray pa) {</span>
+<span class="fc" id="L235">                    var length = CodeBlock.of(&quot;$L.length&quot;, KaumeiLib.requireNonNull(target.paramCodeBlock(name)));</span>
+<span class="fc" id="L236">                    code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
+<span class="fc" id="L237">                    code.addStatement(&quot;sqlSb.append($L)&quot;, KaumeiLib.marks(length, maxCollectionPlaceholders, name));</span>
+<span class="fc bfc" id="L238" title="All 2 branches covered.">                } else if (param instanceof SourceMethodParameter.ParamList pl) {</span>
+<span class="fc" id="L239">                    var length = CodeBlock.of(&quot;$L.size()&quot;, KaumeiLib.requireNonNull(target.paramCodeBlock(name)));</span>
+<span class="fc" id="L240">                    code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
+<span class="fc" id="L241">                    code.addStatement(&quot;sqlSb.append($L)&quot;, KaumeiLib.marks(length, maxCollectionPlaceholders, name));</span>
+<span class="pc bpc" id="L242" title="1 of 2 branches missed.">                } else if (param instanceof SourceMethodParameter.ParamComposite pc) {</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">                    for (int i = 0; i &lt; pc.searchRequests().length; i++) {</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">                        if (i &gt; 0) {</span>
+<span class="fc" id="L245">                            code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;,&quot;);</span>
                         }
-<span class="fc" id="L245">                        code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;?&quot;);</span>
+<span class="fc" id="L247">                        code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;?&quot;);</span>
                     }
-<span class="fc" id="L247">                    var length = CodeBlock.of(&quot;&quot; + pc.searchRequests().length);</span>
-<span class="fc" id="L248">                    code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
-<span class="fc" id="L249">                } else {</span>
-<span class="nc" id="L250">                    throw new IllegalStateException(&quot;Unexpected parameter: &quot; + param); // sanity-check</span>
+<span class="fc" id="L249">                    var length = CodeBlock.of(&quot;&quot; + pc.searchRequests().length);</span>
+<span class="fc" id="L250">                    code.addStatement(&quot;plCount = $L&quot;, KaumeiLib.checkPlaceholder(&quot;plCount&quot;, length, maxTotalPlaceholders));</span>
+<span class="fc" id="L251">                } else {</span>
+<span class="nc" id="L252">                    throw new IllegalStateException(&quot;Unexpected parameter: &quot; + param); // sanity-check</span>
                 }
-<span class="pc bpc" id="L252" title="1 of 2 branches missed.">            } else if (token instanceof SqlTokenizer.AllNames sqlParam) {</span>
-<span class="fc" id="L253">                var name = sqlParam.root();</span>
-<span class="fc" id="L254">                var param = parameter.getValues(name);</span>
-<span class="pc bpc" id="L255" title="1 of 2 branches missed.">                if (param instanceof SourceMethodParameter.ParamComposite pc) {</span>
-<span class="fc bfc" id="L256" title="All 2 branches covered.">                    for (int i = 0; i &lt; pc.searchRequests().length; i++) {</span>
-<span class="fc bfc" id="L257" title="All 2 branches covered.">                        if (i &gt; 0) {</span>
-<span class="fc" id="L258">                            code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;,&quot;);</span>
+<span class="fc bfc" id="L254" title="All 2 branches covered.">            } else if (token instanceof ParsedSql.AllNames sqlParam) {</span>
+<span class="fc" id="L255">                var name = sqlParam.root();</span>
+<span class="fc" id="L256">                var param = parameter.getValues(name);</span>
+<span class="pc bpc" id="L257" title="1 of 2 branches missed.">                if (param instanceof SourceMethodParameter.ParamComposite pc) {</span>
+<span class="fc bfc" id="L258" title="All 2 branches covered.">                    for (int i = 0; i &lt; pc.searchRequests().length; i++) {</span>
+<span class="fc bfc" id="L259" title="All 2 branches covered.">                        if (i &gt; 0) {</span>
+<span class="fc" id="L260">                            code.addStatement(&quot;sqlSb.append($S)&quot;, &quot;,&quot;);</span>
                         }
-<span class="fc" id="L260">                        code.addStatement(&quot;sqlSb.append($S)&quot;, ctx.jdbcName(pc.variable()[i]).value());</span>
+<span class="fc" id="L262">                        code.addStatement(&quot;sqlSb.append($S)&quot;, ctx.jdbcName(pc.variable()[i]).value());</span>
                     }
                 } else {
-<span class="nc" id="L263">                    throw new IllegalStateException(&quot;type not expected: &quot; + param); // sanity-check</span>
+<span class="nc" id="L265">                    throw new IllegalStateException(&quot;type not expected: &quot; + param); // sanity-check</span>
                 }
             }
-<span class="fc" id="L266">        } // for</span>
-<span class="fc" id="L267">        code.addStatement(&quot;var $L = sqlSb.toString()&quot;, variableName);</span>
-<span class="fc" id="L268">        return code.build();</span>
+<span class="fc" id="L268">        } // for</span>
+<span class="fc" id="L269">        code.addStatement(&quot;var $L = sqlSb.toString()&quot;, variableName);</span>
+<span class="fc" id="L270">        return code.build();</span>
     }
 
     // ------------------------------------------------------------------------
 
     public void processParameter(Msg.Builder messages, SourceMethod source, TargetMethod body) {
-<span class="fc" id="L274">        this.ctx.logger.debug(&quot;processParameter&quot;);</span>
-<span class="fc" id="L275">        var parameter = source.parameter();</span>
+<span class="fc" id="L276">        this.ctx.logger.debug(&quot;processParameter&quot;);</span>
+<span class="fc" id="L277">        var parameter = source.parameter();</span>
 
-<span class="fc bfc" id="L277" title="All 2 branches covered.">        if (parameter.hasCollections()) {</span>
-<span class="fc" id="L278">            body.addStatement(&quot;var index = 1&quot;);</span>
+<span class="fc bfc" id="L279" title="All 2 branches covered.">        if (parameter.hasCollections()) {</span>
+<span class="fc" id="L280">            body.addStatement(&quot;var index = 1&quot;);</span>
         }
 
-<span class="fc" id="L281">        int sqlIndex = 1;</span>
-<span class="fc bfc" id="L282" title="All 2 branches covered.">        for (var token : parameter.tokens()) {</span>
-<span class="fc bfc" id="L283" title="All 2 branches covered.">            if (token instanceof SqlTokenizer.SingleParameter sqlParam) {</span>
-<span class="fc" id="L284">                var name = sqlParam.root();</span>
-<span class="fc" id="L285">                var param = parameter.getSingle(name);</span>
-<span class="fc bfc" id="L286" title="All 2 branches covered.">                var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
-<span class="fc" id="L287">                var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), param.searchRequest());</span>
-<span class="fc bfc" id="L288" title="All 2 branches covered.">                if (converter.hasMessages()) {</span>
-<span class="fc" id="L289">                    messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
-<span class="fc" id="L290">                            sqlParam.name(), SourceDV.converter(ctx, param.element()), converter.messages()));</span>
+<span class="fc" id="L283">        int sqlIndex = 1;</span>
+<span class="fc bfc" id="L284" title="All 2 branches covered.">        for (var token : parameter.parsedSql()) {</span>
+<span class="fc bfc" id="L285" title="All 2 branches covered.">            if (token instanceof ParsedSql.SingleParameter sqlParam) {</span>
+<span class="fc" id="L286">                var name = sqlParam.root();</span>
+<span class="fc" id="L287">                var param = parameter.getSingle(name);</span>
+<span class="fc bfc" id="L288" title="All 2 branches covered.">                var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
+<span class="fc" id="L289">                var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), param.searchRequest());</span>
+<span class="fc bfc" id="L290" title="All 2 branches covered.">                if (converter.hasMessages()) {</span>
+<span class="fc bfc" id="L291" title="All 2 branches covered.">                    if (isCollection(param.element())) {</span>
+<span class="fc" id="L292">                        messages.add(JdbcMsg.sqlPlaceholderCollectionRequiresExpansion(</span>
+<span class="fc" id="L293">                                sqlParam.name(), param.element()));</span>
+                    } else {
+<span class="fc" id="L295">                        messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
+<span class="fc" id="L296">                                sqlParam.name(), SourceDV.converter(ctx, param.element()), converter.messages()));</span>
+                    }
                 } else {
-<span class="fc" id="L292">                    converter.value().setParameter(body, body.paramCodeBlock(name), indexCode, param.optional());</span>
+<span class="fc" id="L299">                    converter.value().setParameter(body, body.paramCodeBlock(name), indexCode, param.optional());</span>
                 }
-<span class="fc bfc" id="L294" title="All 2 branches covered.">            } else if (token instanceof SqlTokenizer.AllValues sqlParam) {</span>
-<span class="fc" id="L295">                var name = sqlParam.root();</span>
-<span class="fc" id="L296">                var param = parameter.getValues(name);</span>
-<span class="fc bfc" id="L297" title="All 2 branches covered.">                if (param instanceof SourceMethodParameter.ParamArray pa) {</span>
-<span class="fc" id="L298">                    body.addStatement(&quot;// array&quot;);</span>
-<span class="pc bpc" id="L299" title="1 of 2 branches missed.">                    var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
-<span class="fc" id="L300">                    var item = body.tempVarName(name + &quot;Item&quot;);</span>
-<span class="fc" id="L301">                    body.beginControlFlow(&quot;for (var $L : $L)&quot;, item, body.paramCodeBlock(name));</span>
-<span class="fc" id="L302">                    var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), pa.searchRequest());</span>
-<span class="fc bfc" id="L303" title="All 2 branches covered.">                    if (converter.hasMessages()) {</span>
-<span class="fc" id="L304">                        messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
-<span class="fc" id="L305">                                sqlParam.name(), SourceDV.converter(ctx, param.element()), converter.messages()));</span>
+<span class="fc bfc" id="L301" title="All 2 branches covered.">            } else if (token instanceof ParsedSql.AllValues sqlParam) {</span>
+<span class="fc" id="L302">                var name = sqlParam.root();</span>
+<span class="fc" id="L303">                var param = parameter.getValues(name);</span>
+<span class="fc bfc" id="L304" title="All 2 branches covered.">                if (param instanceof SourceMethodParameter.ParamArray pa) {</span>
+<span class="fc" id="L305">                    body.addStatement(&quot;// array&quot;);</span>
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">                    var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
+<span class="fc" id="L307">                    var item = body.tempVarName(name + &quot;Item&quot;);</span>
+<span class="fc" id="L308">                    body.beginControlFlow(&quot;for (var $L : $L)&quot;, item, body.paramCodeBlock(name));</span>
+<span class="fc" id="L309">                    var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), pa.searchRequest());</span>
+<span class="fc bfc" id="L310" title="All 2 branches covered.">                    if (converter.hasMessages()) {</span>
+<span class="fc" id="L311">                        messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
+<span class="fc" id="L312">                                sqlParam.name(), SourceDV.converter(ctx, param.element()), converter.messages()));</span>
                     } else {
-<span class="fc" id="L307">                        converter.value().setParameter(body, CodeBlock.of(&quot;$L&quot;, item), indexCode, pa.cmpOptional());</span>
+<span class="fc" id="L314">                        converter.value().setParameter(body, CodeBlock.of(&quot;$L&quot;, item), indexCode, pa.cmpOptional());</span>
                     }
-<span class="fc" id="L309">                    body.endControlFlow();</span>
-<span class="fc bfc" id="L310" title="All 2 branches covered.">                } else if (param instanceof SourceMethodParameter.ParamList pl) {</span>
-<span class="fc" id="L311">                    body.addStatement(&quot;// list&quot;);</span>
-<span class="pc bpc" id="L312" title="1 of 2 branches missed.">                    var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
-<span class="fc" id="L313">                    var item = body.tempVarName(name + &quot;Item&quot;);</span>
-<span class="fc" id="L314">                    body.beginControlFlow(&quot;for (var $L : $L)&quot;, item, body.paramCodeBlock(name));</span>
-<span class="fc" id="L315">                    var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), pl.searchRequest());</span>
-<span class="fc bfc" id="L316" title="All 2 branches covered.">                    if (converter.hasMessages()) {</span>
-<span class="fc" id="L317">                        messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
-<span class="fc" id="L318">                                sqlParam.name(), SourceDV.converter(ctx, param.element()), converter.messages()));</span>
+<span class="fc" id="L316">                    body.endControlFlow();</span>
+<span class="fc bfc" id="L317" title="All 2 branches covered.">                } else if (param instanceof SourceMethodParameter.ParamList pl) {</span>
+<span class="fc" id="L318">                    body.addStatement(&quot;// list&quot;);</span>
+<span class="pc bpc" id="L319" title="1 of 2 branches missed.">                    var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
+<span class="fc" id="L320">                    var item = body.tempVarName(name + &quot;Item&quot;);</span>
+<span class="fc" id="L321">                    body.beginControlFlow(&quot;for (var $L : $L)&quot;, item, body.paramCodeBlock(name));</span>
+<span class="fc" id="L322">                    var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), pl.searchRequest());</span>
+<span class="fc bfc" id="L323" title="All 2 branches covered.">                    if (converter.hasMessages()) {</span>
+<span class="fc" id="L324">                        messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
+<span class="fc" id="L325">                                sqlParam.name(), SourceDV.converter(ctx, param.element()), converter.messages()));</span>
                     } else {
-<span class="fc" id="L320">                        converter.value().setParameter(body, CodeBlock.of(&quot;$L&quot;, item), indexCode, pl.cmpOptional());</span>
+<span class="fc" id="L327">                        converter.value().setParameter(body, CodeBlock.of(&quot;$L&quot;, item), indexCode, pl.cmpOptional());</span>
                     }
-<span class="fc" id="L322">                    body.endControlFlow();</span>
-<span class="pc bpc" id="L323" title="1 of 2 branches missed.">                } else if (param instanceof SourceMethodParameter.ParamComposite pc) {</span>
-<span class="fc bfc" id="L324" title="All 2 branches covered.">                    for (int i = 0; i &lt; pc.names().length; i++) {</span>
-<span class="fc" id="L325">                        var access = CodeBlock.of(&quot;$L.$L()&quot;, body.paramCodeBlock(name), pc.variable()[i].getSimpleName());</span>
-<span class="pc bpc" id="L326" title="1 of 2 branches missed.">                        var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
-<span class="fc" id="L327">                        var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), pc.searchRequests()[i]);</span>
-<span class="fc bfc" id="L328" title="All 2 branches covered.">                        if (converter.hasMessages()) {</span>
-<span class="fc" id="L329">                            messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
-<span class="fc" id="L330">                                    sqlParam.name(), SourceDV.converter(ctx, pc.variable()[i]), converter.messages()));</span>
+<span class="fc" id="L329">                    body.endControlFlow();</span>
+<span class="pc bpc" id="L330" title="1 of 2 branches missed.">                } else if (param instanceof SourceMethodParameter.ParamComposite pc) {</span>
+<span class="fc bfc" id="L331" title="All 2 branches covered.">                    for (int i = 0; i &lt; pc.names().length; i++) {</span>
+<span class="fc" id="L332">                        var access = CodeBlock.of(&quot;$L.$L()&quot;, body.paramCodeBlock(name), pc.variable()[i].getSimpleName());</span>
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">                        var indexCode = parameter.hasCollections() ? CodeBlock.of(&quot;index++&quot;) : CodeBlock.of(&quot;$L&quot;, sqlIndex++);</span>
+<span class="fc" id="L334">                        var converter = ctx.kaumeiJava2Jdbc.searchJava(source.method(), pc.searchRequests()[i]);</span>
+<span class="fc bfc" id="L335" title="All 2 branches covered.">                        if (converter.hasMessages()) {</span>
+<span class="fc" id="L336">                            messages.add(JdbcMsg.invalidSqlParameterConverter(</span>
+<span class="fc" id="L337">                                    sqlParam.name(), SourceDV.converter(ctx, pc.variable()[i]), converter.messages()));</span>
                         } else {
-<span class="fc" id="L332">                            converter.value().setParameter(body, access, indexCode, pc.optionals()[i]);</span>
+<span class="fc" id="L339">                            converter.value().setParameter(body, access, indexCode, pc.optionals()[i]);</span>
                         }
                     }
                 } else {
-<span class="nc" id="L336">                    throw new IllegalStateException(&quot;Unexpected parameter: &quot; + param); // sanity-check</span>
+<span class="nc" id="L343">                    throw new IllegalStateException(&quot;Unexpected parameter: &quot; + param); // sanity-check</span>
                 }
             }
-<span class="fc" id="L339">        }</span>
-<span class="fc" id="L340">    }</span>
+<span class="fc" id="L346">        }</span>
+<span class="fc" id="L347">    }</span>
+
+    private boolean isCollection(VariableElement parameter) {
+<span class="fc" id="L350">        var type = parameter.asType();</span>
+<span class="fc bfc" id="L351" title="All 4 branches covered.">        return type instanceof ArrayType || ctx.JAVA_List.isSameType(type);</span>
+    }
+
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

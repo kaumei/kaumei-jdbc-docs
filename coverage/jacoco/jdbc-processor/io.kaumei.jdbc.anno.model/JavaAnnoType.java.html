@@ -32,147 +32,174 @@ public final class JavaAnnoType&lt;T&gt; {
     public JavaAnnoType(Context ctx,
                         Class&lt;? extends Annotation&gt; annoCls,
                         Class&lt;T&gt; annoValueCls,
-                        Function&lt;AnnoElementValueMap, T&gt; func
-<span class="fc" id="L36">    ) {</span>
-<span class="fc" id="L37">        this.ctx = ctx;</span>
-<span class="fc" id="L38">        this.typeElement = ctx.elements.getTypeElement(annoCls.getCanonicalName());</span>
-<span class="fc" id="L39">        this.annoValueCls = annoValueCls;</span>
-<span class="fc" id="L40">        this.func = func;</span>
-<span class="fc" id="L41">    }</span>
+<span class="fc" id="L35">                        Function&lt;AnnoElementValueMap, T&gt; func) {</span>
+<span class="fc" id="L36">        this.ctx = ctx;</span>
+<span class="fc" id="L37">        this.typeElement = ctx.getTypeElement(annoCls.getCanonicalName());</span>
+<span class="fc" id="L38">        this.annoValueCls = annoValueCls;</span>
+<span class="fc" id="L39">        this.func = func;</span>
+<span class="fc" id="L40">    }</span>
 
     // ------------------------------------------------------------------------
 
     @Override
     public String toString() {
-<span class="fc" id="L47">        return typeElement.getQualifiedName().toString();</span>
+<span class="fc" id="L46">        return typeElement.getQualifiedName().toString();</span>
     }
 
     public TypeElement typeElement() {
-<span class="fc" id="L51">        return this.typeElement;</span>
+<span class="fc" id="L50">        return this.typeElement;</span>
     }
 
     // ------------------------------------------------------------------------
 
     public boolean hasAnno(AnnotatedConstruct element) {
-<span class="fc bfc" id="L57" title="All 2 branches covered.">        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {</span>
-<span class="fc bfc" id="L58" title="All 2 branches covered.">            if (isSameType(mirror)) {</span>
-<span class="fc" id="L59">                return true;</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">            if (isSameType(mirror)) {</span>
+<span class="fc" id="L58">                return true;</span>
             }
-<span class="fc" id="L61">        }</span>
-<span class="fc" id="L62">        return false;</span>
+<span class="fc" id="L60">        }</span>
+<span class="fc" id="L61">        return false;</span>
     }
 
     public T cast(Object value) {
-<span class="fc" id="L66">        return this.annoValueCls.cast(value);</span>
+<span class="fc" id="L65">        return this.annoValueCls.cast(value);</span>
     }
 
     // ------------------------------------------------------------------------
 
     public T getAnno(AnnotationMirror mirror) {
-<span class="fc" id="L72">        return requireNonNull(this.func.apply(new AnnoElementValueMap(mirror)));</span>
+<span class="fc" id="L71">        return requireNonNull(this.func.apply(new AnnoElementValueMap(mirror)));</span>
     }
 
     public T getAnno(AnnotatedConstruct element) {
-<span class="fc" id="L76">        var mirror = requireNonNull(findOne(element));</span>
-<span class="fc" id="L77">        return requireNonNull(this.func.apply(new AnnoElementValueMap(mirror)));</span>
+<span class="fc" id="L75">        var mirror = requireNonNull(findOne(element));</span>
+<span class="fc" id="L76">        return requireNonNull(this.func.apply(new AnnoElementValueMap(mirror)));</span>
     }
 
     public T getAnno(AnnotatedConstruct element, T defaultValue) {
-<span class="fc" id="L81">        var mirror = findOne(element);</span>
-<span class="fc bfc" id="L82" title="All 2 branches covered.">        return mirror == null ? defaultValue : requireNonNull(this.func.apply(new AnnoElementValueMap(mirror)));</span>
+<span class="fc" id="L80">        var mirror = findOne(element);</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        return mirror == null ? defaultValue : requireNonNull(this.func.apply(new AnnoElementValueMap(mirror)));</span>
     }
 
     /**
      * @return null if element could not be found else the value
      */
     public @Nullable T getAnnoOpt(AnnotatedConstruct element) {
-<span class="fc" id="L89">        var mirror = findOne(element);</span>
-<span class="fc bfc" id="L90" title="All 2 branches covered.">        return mirror == null ? null : getAnno(mirror);</span>
+<span class="fc" id="L88">        var mirror = findOne(element);</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        return mirror == null ? null : getAnno(mirror);</span>
     }
 
     // ------------------------------------------------------------------------
 
     private boolean isSameType(AnnotationMirror mirror) {
-<span class="fc" id="L96">        return ctx.isSameType(mirror.getAnnotationType(), typeElement.asType());</span>
+<span class="fc" id="L95">        return ctx.isSameType(mirror.getAnnotationType(), typeElement.asType());</span>
     }
 
     private @Nullable AnnotationMirror findOne(AnnotatedConstruct element) {
-<span class="fc" id="L100">        AnnotationMirror found = null;</span>
-<span class="fc bfc" id="L101" title="All 2 branches covered.">        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {</span>
-<span class="fc bfc" id="L102" title="All 2 branches covered.">            if (isSameType(mirror)) {</span>
-<span class="pc bpc" id="L103" title="1 of 2 branches missed.">                if (found == null) {</span>
-<span class="fc" id="L104">                    found = mirror;</span>
+<span class="fc" id="L99">        AnnotationMirror found = null;</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">            if (isSameType(mirror)) {</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">                if (found == null) {</span>
+<span class="fc" id="L103">                    found = mirror;</span>
                 } else {
-<span class="nc" id="L106">                    throw new IllegalStateException(&quot;Found too many annotations&quot;);</span>
+<span class="nc" id="L105">                    throw new IllegalStateException(&quot;Found too many annotations&quot;);</span>
                 }
             }
-<span class="fc" id="L109">        }</span>
-<span class="fc" id="L110">        return found;</span>
+<span class="fc" id="L108">        }</span>
+<span class="fc" id="L109">        return found;</span>
     }
 
     // ------------------------------------------------------------------------
 
-<span class="fc" id="L115">    public record JdbcGenerationRecord(TypeMirror[] classAnnotations,</span>
+<span class="fc" id="L114">    public record JdbcGenerationRecord(TypeMirror[] classAnnotations,</span>
                                        TypeMirror[] constructorAnnotations) {
         public static JdbcGenerationRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L118">            return new JdbcGenerationRecord(</span>
-<span class="fc" id="L119">                    map.getTypeMirrorArray(&quot;classAnnotations&quot;),</span>
-<span class="fc" id="L120">                    map.getTypeMirrorArray(&quot;constructorAnnotations&quot;));</span>
+<span class="fc" id="L117">            return new JdbcGenerationRecord(</span>
+<span class="fc" id="L118">                    map.getTypeMirrorArray(&quot;classAnnotations&quot;),</span>
+<span class="fc" id="L119">                    map.getTypeMirrorArray(&quot;constructorAnnotations&quot;));</span>
         }
     }
 
-<span class="fc" id="L124">    public record JdbcDebugRecord() {</span>
+<span class="fc" id="L123">    public record JdbcDebugRecord() {</span>
         public static JdbcDebugRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L126">            return new JdbcDebugRecord();</span>
+<span class="fc" id="L125">            return new JdbcDebugRecord();</span>
         }
     }
 
-<span class="fc" id="L130">    public record JdbcNativeRecord(@Nullable TypeMirror cls, @Nullable String method) {</span>
+<span class="fc" id="L129">    public record JdbcToJavaRecord(ConverterNameDV name, @Nullable SQLTypeDV sqlType) {</span>
+        public static JdbcToJavaRecord unnamed() {
+<span class="fc" id="L131">            return new JdbcToJavaRecord(ConverterNameDV.unnamed(), null);</span>
+        }
+
+        public static JdbcToJavaRecord of(AnnoElementValueMap map) {
+<span class="fc" id="L135">            var sqlType = map.getInteger(&quot;sqlType&quot;, Integer.MAX_VALUE);</span>
+<span class="fc" id="L136">            return new JdbcToJavaRecord(</span>
+<span class="fc" id="L137">                    ConverterNameDV.of(map),</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">                    sqlType == Integer.MAX_VALUE ? null : SQLTypeDV.of(sqlType));</span>
+        }
+
+        public boolean hasSqlType() {
+<span class="fc bfc" id="L142" title="All 2 branches covered.">            return this.sqlType != null;</span>
+        }
+
+    }
+
+<span class="fc" id="L147">    public record JdbcNativeRecord(@Nullable TypeMirror cls, @Nullable String method) {</span>
         public static JdbcNativeRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L132">            var cls = map.getTypeMirror(&quot;cls&quot;);</span>
-<span class="fc" id="L133">            var method = map.getString(&quot;method&quot;, &quot;&quot;);</span>
-<span class="fc" id="L134">            return new JdbcNativeRecord(</span>
-<span class="fc bfc" id="L135" title="All 4 branches covered.">                    cls == null || cls.getKind() == TypeKind.VOID ? null : cls,</span>
-<span class="fc bfc" id="L136" title="All 2 branches covered.">                    method.isBlank() ? null : method);</span>
+<span class="fc" id="L149">            var cls = map.getTypeMirror(&quot;cls&quot;);</span>
+<span class="fc" id="L150">            var method = map.getString(&quot;method&quot;, &quot;&quot;);</span>
+<span class="fc" id="L151">            return new JdbcNativeRecord(</span>
+<span class="fc bfc" id="L152" title="All 4 branches covered.">                    cls == null || cls.getKind() == TypeKind.VOID ? null : cls,</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">                    method.isBlank() ? null : method);</span>
         }
     }
 
-<span class="fc" id="L140">    public record JdbcSelectRecord(SqlDV sql) {</span>
+<span class="fc" id="L157">    public record JdbcCallRecord(SqlDV sql) {</span>
+        public static JdbcCallRecord of(AnnoElementValueMap map) {
+<span class="fc" id="L159">            return new JdbcCallRecord(SqlDV.of(map.getString(&quot;value&quot;, &quot;&quot;)));</span>
+        }
+    }
+
+<span class="fc" id="L163">    public record JdbcSelectRecord(SqlDV sql) {</span>
         public static JdbcSelectRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L142">            return new JdbcSelectRecord(SqlDV.of(map.getString(&quot;value&quot;, &quot;&quot;)));</span>
+<span class="fc" id="L165">            return new JdbcSelectRecord(SqlDV.of(map.getString(&quot;value&quot;, &quot;&quot;)));</span>
         }
     }
 
-<span class="fc" id="L146">    public record JdbcUpdateRecord(SqlDV sql, JdbcUpdate.GeneratedValues returnGeneratedValues) {</span>
+<span class="fc" id="L169">    public record JdbcUpdateRecord(SqlDV sql,</span>
+                                   JdbcUpdate.GeneratedValues returnGeneratedValues,
+                                   String[] returnGeneratedColumns) {
         public static JdbcUpdateRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L148">            return new JdbcUpdateRecord(</span>
-<span class="fc" id="L149">                    SqlDV.of(map.getString(&quot;value&quot;, &quot;&quot;)),</span>
-<span class="fc" id="L150">                    map.getEnum(&quot;returnGeneratedValues&quot;, JdbcUpdate.GeneratedValues.class, JdbcUpdate.GeneratedValues.NONE));</span>
+<span class="fc" id="L173">            return new JdbcUpdateRecord(</span>
+<span class="fc" id="L174">                    SqlDV.of(map.getString(&quot;value&quot;, &quot;&quot;)),</span>
+<span class="fc" id="L175">                    map.getEnum(&quot;returnGeneratedValues&quot;, JdbcUpdate.GeneratedValues.class, JdbcUpdate.GeneratedValues.NONE),</span>
+<span class="fc" id="L176">                    map.getStringArray(&quot;returnGeneratedColumns&quot;));</span>
         }
     }
 
-<span class="fc" id="L154">    public record JdbcBatchUpdateRecord() {</span>
+<span class="fc" id="L180">    public record JdbcBatchUpdateRecord() {</span>
         public static JdbcBatchUpdateRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L156">            return new JdbcBatchUpdateRecord();</span>
+<span class="fc" id="L182">            return new JdbcBatchUpdateRecord();</span>
         }
     }
 
     // ------------------------------------------------------------------------
 
-<span class="fc" id="L162">    public record JdbcConfigRecord(@Nullable TypeMirror parent, TypeMirror[] converter,</span>
+<span class="fc" id="L188">    public record JdbcConfigRecord(@Nullable TypeMirror parent, TypeMirror[] converter,</span>
                                    String generatedClassSuffix,
                                    JdbcConfig.GeneratedValues returnGeneratedValues,
                                    int maxCollectionPlaceholders,
                                    int maxTotalPlaceholders) {
         public static JdbcConfigRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L168">            var parent = map.getTypeMirror(&quot;parent&quot;);</span>
-<span class="fc" id="L169">            var converter = map.getTypeMirrorArray(&quot;converter&quot;);</span>
-<span class="fc" id="L170">            var generatedClassSuffix = map.getString(&quot;generatedClassSuffix&quot;, &quot;Jdbc&quot;);</span>
-<span class="fc" id="L171">            var returnGeneratedValues = map.getEnum(&quot;returnGeneratedValues&quot;, JdbcConfig.GeneratedValues.class, JdbcConfig.GeneratedValues.DEFAULT);</span>
-<span class="fc" id="L172">            var maxCollectionPlaceholders = map.getInteger(&quot;maxCollectionPlaceholders&quot;, 1_000);</span>
-<span class="fc" id="L173">            var maxTotalPlaceholders = map.getInteger(&quot;maxTotalPlaceholders&quot;, 2_000);</span>
-<span class="fc" id="L174">            return new JdbcConfigRecord(</span>
-<span class="fc bfc" id="L175" title="All 4 branches covered.">                    parent != null &amp;&amp; parent.getKind() == TypeKind.VOID ? null : parent,</span>
+<span class="fc" id="L194">            var parent = map.getTypeMirror(&quot;parent&quot;);</span>
+<span class="fc" id="L195">            var converter = map.getTypeMirrorArray(&quot;converter&quot;);</span>
+<span class="fc" id="L196">            var generatedClassSuffix = map.getString(</span>
+                    &quot;generatedClassSuffix&quot;, JdbcConfig.DEFAULT_GENERATED_CLASS_SUFFIX);
+<span class="fc" id="L198">            var returnGeneratedValues = map.getEnum(&quot;returnGeneratedValues&quot;, JdbcConfig.GeneratedValues.class, JdbcConfig.GeneratedValues.DEFAULT);</span>
+<span class="fc" id="L199">            var maxCollectionPlaceholders = map.getInteger(&quot;maxCollectionPlaceholders&quot;, 1_000);</span>
+<span class="fc" id="L200">            var maxTotalPlaceholders = map.getInteger(&quot;maxTotalPlaceholders&quot;, 2_000);</span>
+<span class="fc" id="L201">            return new JdbcConfigRecord(</span>
+<span class="fc bfc" id="L202" title="All 4 branches covered.">                    parent != null &amp;&amp; parent.getKind() == TypeKind.VOID ? null : parent,</span>
                     converter,
                     generatedClassSuffix,
                     returnGeneratedValues,
@@ -181,9 +208,9 @@ public final class JavaAnnoType&lt;T&gt; {
         }
     }
 
-<span class="fc" id="L184">    public record JdbcLogLevelRecord(JdbcLogLevel.LogLevel value) {</span>
+<span class="fc" id="L211">    public record JdbcLogLevelRecord(JdbcLogLevel.LogLevel value) {</span>
         public static JdbcLogLevelRecord of(AnnoElementValueMap map) {
-<span class="fc" id="L186">            return new JdbcLogLevelRecord(map.getEnum(&quot;value&quot;, JdbcLogLevel.LogLevel.class, JdbcLogLevel.LogLevel.ERROR));</span>
+<span class="fc" id="L213">            return new JdbcLogLevelRecord(map.getEnum(&quot;value&quot;, JdbcLogLevel.LogLevel.class, JdbcLogLevel.LogLevel.ERROR));</span>
         }
     }
 
